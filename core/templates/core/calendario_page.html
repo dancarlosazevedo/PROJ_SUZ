@@ -1,0 +1,257 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Calendário de Sistemáticas{% endblock %}
+
+{% block extra_head %}
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/main.min.css" rel="stylesheet">
+    <style>
+        #calendar-container {
+            max-width: 1000px; /* Ajuste conforme preferir */
+            margin: 20px auto;
+        }
+        #calendar {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px; /* Espaçamento interno para o calendário */
+        }
+        .fc-daygrid-day-event-count {
+            display: block; /* Faz com que a contagem quebre a linha */
+            font-size: 0.9em;
+            font-weight: bold;
+            color: #007bff; /* Cor primária do Bootstrap */
+            text-align: center;
+            margin-top: 2px;
+            background-color: rgba(0, 123, 255, 0.1); /* Fundo leve para a contagem */
+            border-radius: 4px;
+            padding: 0 3px;
+            width: fit-content; /* Ajusta a largura ao conteúdo */
+            margin-left: auto;  /* Centraliza o bloco da contagem */
+            margin-right: auto;
+        }
+        .fc-daygrid-day.fc-day-today .fc-daygrid-day-number { /* Destaca o dia de hoje */
+            background-color: #007bff !important;
+            color: white !important;
+            border-radius: 50% !important;
+            width: 2em !important;
+            height: 2em !important;
+            line-height: 2em !important;
+            display: inline-block !important;
+            text-align: center !important;
+        }
+        .fc-toolbar-title {
+            font-size: 1.5em; /* Tamanho do título do mês */
+        }
+        #sistematicas-do-dia-ou-periodo .list-group-item {
+            margin-bottom: 5px;
+            border-radius: 4px;
+        }
+        #sistematicas-do-dia-ou-periodo h4 {
+            font-size: 1.2em;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="mt-4"> <div class="text-center mb-4">
+        <h1>Calendário de Sistemáticas</h1>
+    </div>
+
+    <div class="summary mb-3 p-3 bg-light border rounded">
+        <p><strong>Sistemáticas Vencidas:</strong> <span id="vencidas-count" class="badge bg-danger">{{ vencidas_count|default:0 }}</span></p>
+        <div class="btn-group" role="group" aria-label="Filtros de período">
+            <button type="button" class="btn btn-outline-primary filter-btn" data-days="7">Próximos 7 dias</button>
+            <button type="button" class="btn btn-outline-primary filter-btn" data-days="15">Próximos 15 dias</button>
+            <button type="button" class="btn btn-outline-primary filter-btn" data-days="30">Próximos 30 dias</button>
+            <button type="button" class="btn btn-outline-secondary" id="clear-filter-btn">Limpar Seleção</button>
+        </div>
+    </div>
+    
+    <div id="sistematicas-do-dia-ou-periodo" class="mt-4 mb-4">
+        <ul id="lista-sistematicas-selecionadas" class="list-group">
+            <li class="list-group-item text-muted">Clique em um dia do calendário ou use os filtros acima para ver detalhes.</li>
+        </ul>
+    </div>
+
+    <div id="calendar-container">
+        <div id="calendar">
+            </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/locales/pt-br.global.min.js"></script>
+
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var calendarEl = document.getElementById('calendar');
+        var sistematicasListEl = document.getElementById('lista-sistematicas-selecionadas');
+        var eventCounts = {}; 
+
+      
+        var calendar = new FullCalendar.Calendar(calendarEl, { 
+            locale: 'pt-br',
+            initialView: 'dayGridMonth',
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,listWeek'
+            },
+            buttonText: {
+                today:    'Hoje',
+                month:    'Mês',
+                week:     'Semana',
+                // day:      'Dia', // Removido se timeGridDay não está em headerToolbar.right
+                list:     'Lista'
+            },
+            events: {
+                url: "{% url 'core:calendar_events_api' %}",
+                success: function(data) {
+                    eventCounts = {}; 
+                    if (Array.isArray(data)) {
+                        data.forEach(function(event) {
+                            if (event.start) {
+                                const dateStr = event.start.split('T')[0];
+                                eventCounts[dateStr] = (eventCounts[dateStr] || 0) + 1;
+                            }
+                        });
+                    }
+                    return data; 
+                },
+                failure: function() {
+                    console.error("Falha ao carregar eventos para o calendário.");
+                    sistematicasListEl.innerHTML = '<li class="list-group-item text-danger">Falha ao carregar dados do calendário. Tente recarregar a página.</li>';
+                }
+            },
+            
+            dayCellDidMount: function(arg) {
+                const dateStr = arg.date.toISOString().split('T')[0];
+                if (eventCounts[dateStr] && eventCounts[dateStr] > 0) {
+                    let countEl = document.createElement('div');
+                    countEl.className = 'fc-daygrid-day-event-count';
+                    countEl.innerText = eventCounts[dateStr];
+                    
+                    const dayTopEl = arg.el.querySelector('.fc-daygrid-day-top');
+                    if (dayTopEl) {
+                        dayTopEl.parentNode.appendChild(countEl);
+                    } else {
+                         arg.el.appendChild(countEl);
+                    }
+                }
+            },
+
+            dateClick: function(info) {
+                fetchSistematicasPorData(info.dateStr);
+            },
+            eventClick: function(info) {
+                fetchSistematicasPorData(info.event.startStr.split('T')[0]); 
+                info.jsEvent.preventDefault(); 
+            }
+        });
+
+        if (calendarEl) { // Garante que o elemento existe antes de tentar renderizar
+           calendar.render();
+        } else {
+           console.error("Elemento #calendar não encontrado no DOM para renderizar o FullCalendar.");
+        }
+
+
+
+        function fetchSistematicasPorData(dateStr) {
+            // ... (sua função fetchSistematicasPorData como antes) ...
+            const targetDate = dateStr.split('T')[0]; 
+            const url = `{% url 'core:calendar_events_api' %}?start=${targetDate}&end=${targetDate}`;
+
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    sistematicasListEl.innerHTML = ''; 
+                    if (data.length > 0) {
+                        const dateObj = new Date(targetDate + 'T00:00:00Z'); 
+                        const dateDisplay = dateObj.toLocaleDateString('pt-BR', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC'});
+                        sistematicasListEl.innerHTML = `<h4 class="mb-2">Sistemáticas para ${dateDisplay}:</h4>`;
+
+                        data.forEach(sistematic => {
+                            const listItem = document.createElement('li');
+                            listItem.className = 'list-group-item';
+                            listItem.innerHTML = `
+                                <strong>${sistematic.title}</strong><br>
+                                <small class="text-muted">Equip: ${sistematic.equipment} (Linha: ${sistematic.line})</small><br>
+                                <small class="text-muted">Status: ${sistematic.status}</small><br>
+                                <em>${sistematic.description || ''}</em>
+                            `;
+                            sistematicasListEl.appendChild(listItem);
+                        });
+                    } else {
+                        sistematicasListEl.innerHTML = '<li class="list-group-item text-muted">Nenhuma sistemática para esta data.</li>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro ao buscar sistemáticas do dia:', error);
+                    sistematicasListEl.innerHTML = '<li class="list-group-item text-danger">Erro ao carregar detalhes das sistemáticas.</li>';
+                });
+        }
+        
+        document.querySelectorAll('.filter-btn').forEach(button => {
+            button.addEventListener('click', function() {
+               
+                const days = parseInt(this.dataset.days);
+                const today = new Date();
+                
+                const startDate = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
+                const endDate = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
+                endDate.setUTCDate(startDate.getUTCDate() + days -1);
+
+                const startDateStr = startDate.toISOString().split('T')[0];
+                const endDateStr = endDate.toISOString().split('T')[0];
+                
+                const url = `{% url 'core:calendar_events_api' %}?start=${startDateStr}&end=${endDateStr}`;
+                
+                fetch(url)
+                    .then(response => response.json())
+                    .then(data => {
+                        sistematicasListEl.innerHTML = ''; 
+                        if (data.length > 0) {
+                            const periodDisplay = `Sistemáticas para os próximos ${days} dias:`;
+                            sistematicasListEl.innerHTML = `<h4 class="mb-2">${periodDisplay}</h4>`;
+
+                            data.sort((a, b) => new Date(a.start) - new Date(b.start)); 
+                            data.forEach(sistematic => {
+                                const eventDateObj = new Date(sistematic.start + 'T00:00:00Z');
+                                const eventDateDisplay = eventDateObj.toLocaleDateString('pt-BR', {timeZone: 'UTC'});
+
+                                const listItem = document.createElement('li');
+                                listItem.className = 'list-group-item';
+                                listItem.innerHTML = `
+                                    <strong>${eventDateDisplay} - ${sistematic.title}</strong><br>
+                                    <small class="text-muted">Equip: ${sistematic.equipment} (Linha: ${sistematic.line})</small><br>
+                                    <small class="text-muted">Status: ${sistematic.status}</small><br>
+                                    <em>${sistematic.description || ''}</em>
+                                `;
+                                sistematicasListEl.appendChild(listItem);
+                            });
+                        } else {
+                            sistematicasListEl.innerHTML = '<li class="list-group-item text-muted">Nenhuma sistemática para este período.</li>';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erro ao buscar sistemáticas do período:', error);
+                        sistematicasListEl.innerHTML = '<li class="list-group-item text-danger">Erro ao carregar sistemáticas para o período.</li>';
+                    });
+            });
+        });
+
+        document.getElementById('clear-filter-btn').addEventListener('click', function() {
+            sistematicasListEl.innerHTML = '<li class="list-group-item text-muted">Clique em um dia do calendário ou use os filtros acima para ver detalhes.</li>';
+        });
+    });
+    </script>
+{% endblock %}
