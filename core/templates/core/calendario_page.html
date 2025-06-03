@@ -16,20 +16,20 @@
             padding: 10px; /* Espaçamento interno para o calendário */
         }
         .fc-daygrid-day-event-count {
-            display: block; /* Faz com que a contagem quebre a linha */
+            display: block; 
             font-size: 0.9em;
             font-weight: bold;
-            color: #007bff; /* Cor primária do Bootstrap */
+            color: #007bff; 
             text-align: center;
             margin-top: 2px;
-            background-color: rgba(0, 123, 255, 0.1); /* Fundo leve para a contagem */
+            background-color: rgba(0, 123, 255, 0.1); 
             border-radius: 4px;
             padding: 0 3px;
-            width: fit-content; /* Ajusta a largura ao conteúdo */
-            margin-left: auto;  /* Centraliza o bloco da contagem */
+            width: fit-content; 
+            margin-left: auto;  
             margin-right: auto;
         }
-        .fc-daygrid-day.fc-day-today .fc-daygrid-day-number { /* Destaca o dia de hoje */
+        .fc-daygrid-day.fc-day-today .fc-daygrid-day-number { 
             background-color: #007bff !important;
             color: white !important;
             border-radius: 50% !important;
@@ -40,20 +40,29 @@
             text-align: center !important;
         }
         .fc-toolbar-title {
-            font-size: 1.5em; /* Tamanho do título do mês */
+            font-size: 1.5em; 
         }
         #sistematicas-do-dia-ou-periodo .list-group-item {
             margin-bottom: 5px;
             border-radius: 4px;
+            font-size: 0.95em; /* Um pouco menor para a lista */
         }
         #sistematicas-do-dia-ou-periodo h4 {
             font-size: 1.2em;
+        }
+        #sistematicas-do-dia-ou-periodo .list-group-item strong a {
+            color: #0d6efd; /* Cor do link Bootstrap */
+            text-decoration: none;
+        }
+        #sistematicas-do-dia-ou-periodo .list-group-item strong a:hover {
+            text-decoration: underline;
         }
     </style>
 {% endblock %}
 
 {% block content %}
-<div class="mt-4"> <div class="text-center mb-4">
+<div class="mt-4"> 
+    <div class="text-center mb-4">
         <h1>Calendário de Sistemáticas</h1>
     </div>
 
@@ -84,13 +93,16 @@
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/locales/pt-br.global.min.js"></script>
 
-
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         var calendarEl = document.getElementById('calendar');
         var sistematicasListEl = document.getElementById('lista-sistematicas-selecionadas');
         var eventCounts = {}; 
 
+        if (!calendarEl) {
+            console.error("Elemento #calendar não encontrado no DOM!");
+            return; // Interrompe a execução se o elemento do calendário não existir
+        }
       
         var calendar = new FullCalendar.Calendar(calendarEl, { 
             locale: 'pt-br',
@@ -98,17 +110,16 @@
             headerToolbar: {
                 left: 'prev,next today',
                 center: 'title',
-                right: 'dayGridMonth,listWeek'
+                right: 'dayGridMonth,listWeek' // Mês e Lista Semanal
             },
             buttonText: {
                 today:    'Hoje',
                 month:    'Mês',
                 week:     'Semana',
-                // day:      'Dia', // Removido se timeGridDay não está em headerToolbar.right
                 list:     'Lista'
             },
             events: {
-                url: "{% url 'core:calendar_events_api' %}",
+                url: "{% url 'core:calendar_events_api' %}", // URL da sua API de eventos
                 success: function(data) {
                     eventCounts = {}; 
                     if (Array.isArray(data)) {
@@ -119,7 +130,7 @@
                             }
                         });
                     }
-                    return data; 
+                    return data; // Retorna os dados originais para o FullCalendar
                 },
                 failure: function() {
                     console.error("Falha ao carregar eventos para o calendário.");
@@ -134,11 +145,15 @@
                     countEl.className = 'fc-daygrid-day-event-count';
                     countEl.innerText = eventCounts[dateStr];
                     
+                    // Tenta adicionar ao lado do número do dia, se possível, ou no final da célula
                     const dayTopEl = arg.el.querySelector('.fc-daygrid-day-top');
                     if (dayTopEl) {
+                        // Adiciona o contador como um irmão do número do dia, se houver espaço,
+                        // ou pode precisar de um wrapper e flexbox no CSS do FullCalendar.
+                        // Por ora, adicionar ao pai do número do dia é uma opção.
                         dayTopEl.parentNode.appendChild(countEl);
                     } else {
-                         arg.el.appendChild(countEl);
+                         arg.el.appendChild(countEl); // Fallback
                     }
                 }
             },
@@ -146,35 +161,29 @@
             dateClick: function(info) {
                 fetchSistematicasPorData(info.dateStr);
             },
-            eventClick: function(info) {
+            eventClick: function(info) { // Chamado quando um evento ou o link "more" é clicado
                 fetchSistematicasPorData(info.event.startStr.split('T')[0]); 
-                info.jsEvent.preventDefault(); 
+                info.jsEvent.preventDefault(); // Previne navegação se o evento tiver uma URL própria
             }
         });
 
-        if (calendarEl) { // Garante que o elemento existe antes de tentar renderizar
-           calendar.render();
-        } else {
-           console.error("Elemento #calendar não encontrado no DOM para renderizar o FullCalendar.");
-        }
-
-
+        calendar.render();
 
         function fetchSistematicasPorData(dateStr) {
-            // ... (sua função fetchSistematicasPorData como antes) ...
             const targetDate = dateStr.split('T')[0]; 
             const url = `{% url 'core:calendar_events_api' %}?start=${targetDate}&end=${targetDate}`;
 
             fetch(url)
                 .then(response => {
                     if (!response.ok) {
-                        throw new Error('Network response was not ok ' + response.statusText);
+                        throw new Error('Network response was not ok: ' + response.statusText);
                     }
                     return response.json();
                 })
                 .then(data => {
                     sistematicasListEl.innerHTML = ''; 
                     if (data.length > 0) {
+                        // Adiciona 'Z' para indicar UTC e evitar problemas de fuso na conversão de data apenas para exibição
                         const dateObj = new Date(targetDate + 'T00:00:00Z'); 
                         const dateDisplay = dateObj.toLocaleDateString('pt-BR', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC'});
                         sistematicasListEl.innerHTML = `<h4 class="mb-2">Sistemáticas para ${dateDisplay}:</h4>`;
@@ -182,11 +191,16 @@
                         data.forEach(sistematic => {
                             const listItem = document.createElement('li');
                             listItem.className = 'list-group-item';
+                            // Verificando se sistematic.detail_url existe antes de criar o link
+                            const titleElement = sistematic.detail_url ? 
+                                `<a href="${sistematic.detail_url}">${sistematic.title}</a>` : 
+                                sistematic.title;
+
                             listItem.innerHTML = `
-                                <strong>${sistematic.title}</strong><br>
-                                <small class="text-muted">Equip: ${sistematic.equipment} (Linha: ${sistematic.line})</small><br>
-                                <small class="text-muted">Status: ${sistematic.status}</small><br>
-                                <em>${sistematic.description || ''}</em>
+                                <strong>${titleElement}</strong><br>
+                                <small class="text-muted">Equip: ${sistematic.equipment || 'N/A'} (Linha: ${sistematic.line || 'N/A'})</small><br>
+                                <small class="text-muted">Status: ${sistematic.status || 'N/A'}</small><br>
+                                <em>${sistematic.description || 'Sem descrição.'}</em>
                             `;
                             sistematicasListEl.appendChild(listItem);
                         });
@@ -202,13 +216,13 @@
         
         document.querySelectorAll('.filter-btn').forEach(button => {
             button.addEventListener('click', function() {
-               
                 const days = parseInt(this.dataset.days);
-                const today = new Date();
+                const today = new Date(); // Usa a data atual do cliente
                 
+                // Cria datas como UTC para evitar problemas de fuso ao enviar para a API
                 const startDate = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
                 const endDate = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
-                endDate.setUTCDate(startDate.getUTCDate() + days -1);
+                endDate.setUTCDate(startDate.getUTCDate() + days - 1); // -1 para incluir o dia atual no range
 
                 const startDateStr = startDate.toISOString().split('T')[0];
                 const endDateStr = endDate.toISOString().split('T')[0];
@@ -216,7 +230,12 @@
                 const url = `{% url 'core:calendar_events_api' %}?start=${startDateStr}&end=${endDateStr}`;
                 
                 fetch(url)
-                    .then(response => response.json())
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok: ' + response.statusText);
+                        }
+                        return response.json();
+                    })
                     .then(data => {
                         sistematicasListEl.innerHTML = ''; 
                         if (data.length > 0) {
@@ -225,16 +244,22 @@
 
                             data.sort((a, b) => new Date(a.start) - new Date(b.start)); 
                             data.forEach(sistematic => {
+                                // Adiciona 'Z' para indicar UTC e evitar problemas de fuso na conversão de data apenas para exibição
                                 const eventDateObj = new Date(sistematic.start + 'T00:00:00Z');
-                                const eventDateDisplay = eventDateObj.toLocaleDateString('pt-BR', {timeZone: 'UTC'});
+                                const eventDateDisplay = eventDateObj.toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC'});
 
                                 const listItem = document.createElement('li');
                                 listItem.className = 'list-group-item';
+                                // Verificando se sistematic.detail_url existe antes de criar o link
+                                const titleElement = sistematic.detail_url ? 
+                                    `<a href="${sistematic.detail_url}">${sistematic.title}</a>` : 
+                                    sistematic.title;
+                                
                                 listItem.innerHTML = `
-                                    <strong>${eventDateDisplay} - ${sistematic.title}</strong><br>
-                                    <small class="text-muted">Equip: ${sistematic.equipment} (Linha: ${sistematic.line})</small><br>
-                                    <small class="text-muted">Status: ${sistematic.status}</small><br>
-                                    <em>${sistematic.description || ''}</em>
+                                    <strong>${eventDateDisplay} - ${titleElement}</strong><br>
+                                    <small class="text-muted">Equip: ${sistematic.equipment || 'N/A'} (Linha: ${sistematic.line || 'N/A'})</small><br>
+                                    <small class="text-muted">Status: ${sistematic.status || 'N/A'}</small><br>
+                                    <em>${sistematic.description || 'Sem descrição.'}</em>
                                 `;
                                 sistematicasListEl.appendChild(listItem);
                             });

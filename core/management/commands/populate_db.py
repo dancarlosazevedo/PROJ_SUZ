@@ -1,21 +1,19 @@
 # core/management/commands/populate_db.py
 
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import BaseCommand
 from django.utils import timezone
-from datetime import datetime, timedelta, time
+from datetime import datetime, timedelta, time # Certifique-se que 'time' está importado
 import random
 
-# Importe seus modelos
 from core.models import Line, Equipment, Part, TipoSystematic, Systematic, SystematicPartRequired, ExecutionRecord
-from django.contrib.auth import get_user_model # Para pegar o modelo de User
+from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
 class Command(BaseCommand):
-    help = 'Popula o banco de dados com dados de simulação para o sistema de manutenção.'
+    help = 'Popula o banco de dados com dados de simulação para o sistema de manutenção, incluindo novas linhas e múltiplas sistemáticas por linha.'
 
     def add_arguments(self, parser):
-        # Argumento opcional para limpar dados existentes antes de popular
         parser.add_argument(
             '--clear',
             action='store_true',
@@ -34,7 +32,6 @@ class Command(BaseCommand):
 
     def clear_data(self):
         self.stdout.write(self.style.WARNING('Limpando dados existentes...'))
-        # Ordem reversa da criação para respeitar as dependências
         ExecutionRecord.objects.all().delete()
         SystematicPartRequired.objects.all().delete()
         Systematic.objects.all().delete()
@@ -42,29 +39,27 @@ class Command(BaseCommand):
         Equipment.objects.all().delete()
         TipoSystematic.objects.all().delete()
         Line.objects.all().delete()
-        # User.objects.filter(is_superuser=False).delete() # Cuidado ao deletar usuários
         self.stdout.write(self.style.SUCCESS('Dados limpos.'))
 
     def populate_data(self):
-        # Criar ou pegar um usuário para 'created_by' e 'executed_by'
-        # Tenta pegar o primeiro superusuário ou cria um usuário simples se não houver.
-        # Em um cenário real, você pode querer um usuário específico.
         user = User.objects.filter(is_superuser=True).first()
         if not user:
             user = User.objects.create_user(username='dev_user', password='password123', email='dev@example.com', is_staff=True)
             self.stdout.write(self.style.SUCCESS(f"Usuário de desenvolvimento '{user.username}' criado."))
 
-
-        # 1. Criar Linhas
+        # 1. Criar Linhas (ATUALIZADO)
         self.stdout.write("Criando Linhas...")
-        lines_data = ["Linha Convertidora 01", "Linha Rebobinadeira Alpha", "Linha Embalagem Primária"]
+        lines_data = [
+            "Linha 15", "Linha 14", "Linha 13", "Linha 12", "Linha 08", "Linha 07", 
+            "Linha 06", "Linha 05", "P732", "Amica", "Bretting", "Chen Rong"
+        ]
         lines = []
         for name in lines_data:
             line, created = Line.objects.get_or_create(name=name)
             lines.append(line)
             if created: self.stdout.write(f"  Linha '{line.name}' criada.")
 
-        # 2. Criar Tipos de Sistemática
+        # 2. Criar Tipos de Sistemática (Mantido)
         self.stdout.write("Criando Tipos de Sistemática...")
         tipos_data = [
             ("Manutenção Preventiva", "Manutenção realizada para prevenir falhas."),
@@ -79,20 +74,22 @@ class Command(BaseCommand):
             tipos_sistematic.append(tipo)
             if created: self.stdout.write(f"  Tipo '{tipo.nome}' criado.")
         
-        # 3. Criar Equipamentos
-        self.stdout.write("Criando Equipamentos...")
-        equipments_data = [
-            ("Cabeçote de Corte A", lines[0]), ("Sistema de Relevo X", lines[0]),
-            ("Motor Principal Rebobinadeira", lines[1]), ("Painel Elétrico Rebob.", lines[1]),
-            ("Esteira de Saída Emb.", lines[2]), ("Datador Emb.", lines[2])
-        ]
-        equipments = []
-        for name, line_obj in equipments_data:
-            equip, created = Equipment.objects.get_or_create(name=name, line=line_obj)
-            equipments.append(equip)
-            if created: self.stdout.write(f"  Equipamento '{equip.name}' criado na linha '{line_obj.name}'.")
+        if not tipos_sistematic: # Garante que temos tipos para usar
+            self.stdout.write(self.style.ERROR("Nenhum Tipo de Sistemática encontrado ou criado. Saindo."))
+            return
 
-        # 4. Criar Peças
+        # 3. Criar Equipamentos (ATUALIZADO - 2 por linha)
+        self.stdout.write("Criando Equipamentos...")
+        equipments_by_line = {} # Para fácil acesso depois
+        for line_obj in lines:
+            equipments_by_line[line_obj.id] = []
+            for i in range(1, 3): # Criar 2 equipamentos por linha
+                equip_name = f"Equipamento {chr(64+i)} - {line_obj.name}" # Equipamento A - Linha X, Equipamento B - Linha X
+                equip, created = Equipment.objects.get_or_create(name=equip_name, defaults={'line': line_obj})
+                equipments_by_line[line_obj.id].append(equip)
+                if created: self.stdout.write(f"  Equipamento '{equip.name}' criado.")
+        
+        # 4. Criar Peças (Mantido)
         self.stdout.write("Criando Peças...")
         parts_data = [
             ("Rolamento 6205ZZ", "SAP-ROL-001"), ("Lâmina de Corte Circular 150mm", "SAP-LAM-002"),
@@ -105,104 +102,112 @@ class Command(BaseCommand):
             parts.append(part)
             if created: self.stdout.write(f"  Peça '{part.name}' criada.")
 
-        # 5. Criar Sistemáticas e Registros de Execução
+        # 5. Criar Sistemáticas e Registros de Execução (ATUALIZADO - Pelo menos 5 por linha)
         self.stdout.write("Criando Sistemáticas e alguns Registros de Execução...")
         today = timezone.now().date()
+        sistematic_count_total = 0
 
-        systematics_to_create = [
-            {
-                'name': "Verificação Semanal Alinhamento Cabeçote A", 'tipo': tipos_sistematic[3], # Inspeção Visual
-                'equipment': equipments[0], 'range_days': 7, 'created_by': user,
-                'last_exec_offset_days': -random.randint(5, 9), # Última execução entre 5-9 dias atrás
-                'parts_required': [(parts[1], 1.0)] # Lâmina, 1 unidade
-            },
-            {
-                'name': "Lubrificação Mensal Motor Rebobinadeira", 'tipo': tipos_sistematic[1], # Lubrificação
-                'equipment': equipments[2], 'range_days': 30, 'created_by': user,
-                'last_exec_offset_days': -random.randint(25, 35), # Última execução entre 25-35 dias atrás
-                'parts_required': [(parts[2], 0.5)] # Óleo
-            },
-            {
-                'name': "Inspeção Quinzenal Filtro de Ar Datador", 'tipo': tipos_sistematic[3], # Inspeção Visual
-                'equipment': equipments[5], 'range_days': 15, 'created_by': user,
-                'last_exec_offset_days': -random.randint(10, 20)
-            },
-            {
-                'name': "Ajuste Semestral Sensor Indutivo Esteira", 'tipo': tipos_sistematic[2], # Ajuste
-                'equipment': equipments[4], 'range_days': 180, 'created_by': user,
-                'last_exec_offset_days': -random.randint(170,190),
-                'parts_required': [(parts[5], 1.0)]
-            },
-            {
-                'name': "Preventiva Bimestral Painel Elétrico Rebob.", 'tipo': tipos_sistematic[0], # Preventiva
-                'equipment': equipments[3], 'range_days': 60, 'created_by': user,
-                'last_exec_offset_days': None # Nunca executada, para testar o "Requer 1º Agendamento"
-            },
-             {
-                'name': "Medição de Vibração Motor Rebobinadeira (Trimestral)", 'tipo': tipos_sistematic[4], # Medição
-                'equipment': equipments[2], 'range_days': 90, 'created_by': user,
-                'last_exec_offset_days': -random.randint(1,5), # Recente, para estar "Em Dia"
-            },
-        ]
+        for line_obj in lines:
+            line_equipments = equipments_by_line.get(line_obj.id, [])
+            if not line_equipments:
+                self.stdout.write(self.style.WARNING(f"  Nenhum equipamento encontrado para a Linha '{line_obj.name}'. Pulando sistemáticas para esta linha."))
+                continue
 
-        for sys_data in systematics_to_create:
-            # Cria a Sistemática
-            systematic_obj, created = Systematic.objects.get_or_create(
-                name=sys_data['name'],
-                defaults={
-                    'tipo_systematic': sys_data['tipo'],
-                    'equipment': sys_data['equipment'],
-                    'range_days': sys_data['range_days'],
-                    'description': f"Procedimento padrão para {sys_data['name']}.",
-                    'created_by': sys_data['created_by'],
-                    'is_active': True
-                }
-            )
-            if created: self.stdout.write(f"  Sistemática '{systematic_obj.name}' criada.")
+            self.stdout.write(f"  Criando sistemáticas para a Linha '{line_obj.name}'...")
+            for i in range(5): # Criar 5 sistemáticas por linha
+                chosen_equipment = random.choice(line_equipments) # Escolhe um equipamento aleatório da linha
+                chosen_tipo_sistematic = random.choice(tipos_sistematic)
+                systematic_name = f"Sistemática {i+1} ({chosen_tipo_sistematic.nome}) - {chosen_equipment.name}"
+                
+                range_days_options = [7, 15, 30, 60, 90, 180]
+                chosen_range_days = random.choice(range_days_options)
 
-            # Adiciona peças necessárias, se houver
-            if 'parts_required' in sys_data:
-                for part_obj, qty in sys_data['parts_required']:
-                    SystematicPartRequired.objects.get_or_create(
-                        systematic=systematic_obj,
-                        part=part_obj,
-                        defaults={'quantity_required': qty}
-                    )
-
-            # Cria um Registro de Execução passado, se aplicável
-            if sys_data.get('last_exec_offset_days') is not None:
-                exec_date = today + timedelta(days=sys_data['last_exec_offset_days'])
-                ExecutionRecord.objects.get_or_create(
-                    systematic=systematic_obj,
-                    scheduled_date=exec_date, # Data agendada igual à de execução para simplificar
+                systematic_obj, created = Systematic.objects.get_or_create(
+                    name=systematic_name,
+                    equipment=chosen_equipment, # Garante que o nome + equipamento seja único
                     defaults={
-                        'execution_start_date': timezone.make_aware(datetime.combine(exec_date, time(9,0))),
-                        'execution_end_date': timezone.make_aware(datetime.combine(exec_date, time(10,0))), # Ajustei para 1 hora de duração como exemplo
-                        'executed_by': user,
-                        'status': random.choice(['CONCLUIDA', 'CONCLUIDA_ATRASO']),
-                        'observations': 'Execução de simulação via script.'
-                        
+                        'tipo_systematic': chosen_tipo_sistematic,
+                        'range_days': chosen_range_days,
+                        'description': f"Procedimento de simulação para {systematic_name}.",
+                        'created_by': user,
+                        'is_active': True,
+                        'time_estimated_minutes': random.randint(15, 120)
                     }
                 )
-                if created: self.stdout.write(f"    -> Registro de execução passado criado para '{systematic_obj.name}' em {exec_date}.")
-            elif created:
-                 self.stdout.write(f"    -> Sem execução passada para '{systematic_obj.name}'. Será 'Requer 1º Agendamento'.")
+                sistematic_count_total +=1
 
+                if created: 
+                    self.stdout.write(f"    Sistemática '{systematic_obj.name}' criada.")
 
-        # Adicionar alguns ExecutionRecords PENDENTES para o futuro próximo
+                    # Adiciona peças necessárias aleatoriamente (0 a 2 peças)
+                    if parts and random.choice([True, False]): # 50% de chance de adicionar peças
+                        num_parts_to_add = random.randint(0, min(2, len(parts)))
+                        selected_parts = random.sample(parts, num_parts_to_add)
+                        for part_obj in selected_parts:
+                            SystematicPartRequired.objects.get_or_create(
+                                systematic=systematic_obj,
+                                part=part_obj,
+                                defaults={'quantity_required': float(random.randint(1,5))}
+                            )
+
+                    # Cria um Registro de Execução passado para ~70% das novas sistemáticas
+                    if random.random() < 0.7: 
+                        last_exec_offset = -random.randint(1, chosen_range_days + 15) # Até 15 dias depois do "vencimento"
+                        exec_date = today + timedelta(days=last_exec_offset)
+                        
+                        ExecutionRecord.objects.get_or_create(
+                            systematic=systematic_obj,
+                            scheduled_date=exec_date, 
+                            status=random.choice(['CONCLUIDA', 'CONCLUIDA_ATRASO']),
+                            defaults={
+                                'execution_start_date': timezone.make_aware(datetime.combine(exec_date, time(9,0))),
+                                'execution_end_date': timezone.make_aware(datetime.combine(exec_date, time(random.randint(9,10),random.randint(0,59)))),
+                                'executed_by': user,
+                                'observations': 'Execução de simulação via script (passado).'
+                            }
+                        )
+                        self.stdout.write(f"      -> Registro de execução passado criado para '{systematic_obj.name}' em {exec_date}.")
+                    else:
+                         self.stdout.write(f"      -> Sem execução passada para '{systematic_obj.name}'. Próxima data será baseada na criação ou agendamento manual.")
+
+        self.stdout.write(f"{sistematic_count_total} sistemáticas no total processadas ou criadas.")
+        
+        # Adicionar alguns ExecutionRecords PENDENTES para o futuro próximo (mantido)
         self.stdout.write("Agendando algumas execuções futuras...")
-        future_systematics = Systematic.objects.filter(is_active=True).order_by('?')[:2] # Pega 2 aleatórias
-        for systematic_obj in future_systematics:
-            # Verifica se já tem alguma pendente para não duplicar agendamento simples
-            if not ExecutionRecord.objects.filter(systematic=systematic_obj, status='PENDENTE').exists():
-                # Calcula a próxima data com base na lógica do modelo, se possível, ou agenda genericamente
-                next_date_calc = systematic_obj.next_execution_date_calculated
-                scheduled_future_date = next_date_calc if next_date_calc else today + timedelta(days=random.randint(1, 10))
+        # Pega até 5 sistemáticas ativas aleatórias que não tenham execuções pendentes
+        active_systematics_for_future = Systematic.objects.filter(is_active=True).exclude(execution_records__status='PENDENTE').order_by('?')[:5]
+        
+        for systematic_obj in active_systematics_for_future:
+            next_date_calc = systematic_obj.next_execution_date_calculated
+            # Se next_execution_date_calculated for None (nunca executada e com range_days),
+            # agende para daqui a alguns dias a partir de hoje.
+            # Se tiver uma data calculada, use-a.
+            if next_date_calc:
+                 scheduled_future_date = next_date_calc
+            else: # Nunca executada ou sem range_days. Agendar genericamente.
+                # Se range_days > 0, implica que deveria ter uma primeira execução.
+                # Se não, é one-shot, não deveria ter PENDENTE automaticamente.
+                if systematic_obj.range_days and systematic_obj.range_days > 0:
+                    scheduled_future_date = today + timedelta(days=random.randint(1, systematic_obj.range_days // 2 or 7))
+                else:
+                    continue # Não agenda PENDENTE para sistemáticas sem recorrência e nunca executadas
 
-                ExecutionRecord.objects.get_or_create(
-                    systematic=systematic_obj,
-                    scheduled_date=scheduled_future_date,
-                    status='PENDENTE', # Importante para o get_overall_status
-                    defaults={'executed_by': None, 'observations': 'Agendado via script de simulação.'}
-                )
-                self.stdout.write(f"  -> Agendamento PENDENTE criado para '{systematic_obj.name}' em {scheduled_future_date}.")
+
+            # Garante que a data agendada não seja no passado se calculada.
+            if scheduled_future_date < today:
+                # Se a data calculada for no passado (sistemática atrasada),
+                # não criamos um PENDENTE para essa data, pois já está atrasada.
+                # O status dela já reflete isso.
+                # Poderíamos criar um PENDENTE para HOJE se estiver muito atrasada.
+                # Mas para simplificar, vamos pular o agendamento PENDENTE se a data calculada for passada.
+                self.stdout.write(f"  -> Próxima data calculada para '{systematic_obj.name}' ({scheduled_future_date}) está no passado. Não será criado PENDENTE automático.")
+                continue
+
+
+            ExecutionRecord.objects.get_or_create(
+                systematic=systematic_obj,
+                scheduled_date=scheduled_future_date,
+                status='PENDENTE', 
+                defaults={'executed_by': None, 'observations': 'Agendado via script de simulação.'}
+            )
+            self.stdout.write(f"  -> Agendamento PENDENTE criado para '{systematic_obj.name}' em {scheduled_future_date}.")

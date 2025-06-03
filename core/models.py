@@ -88,7 +88,7 @@ class Systematic(models.Model):
     description = models.TextField(blank=True, null=True, verbose_name="Descrição do Procedimento") # "O que vai ser feito"
     equipment = models.ForeignKey(Equipment, on_delete=models.CASCADE, related_name='systematics', verbose_name="Equipamento")
     range_days = models.PositiveIntegerField(default=0, help_text="Intervalo em dias para a próxima execução. 0 ou Nulo se não aplicável.", verbose_name="Frequência (dias)", null=True, blank=True)
-    # time_estimated_minutes = models.PositiveIntegerField(null=True, blank=True, help_text="Tempo estimado em minutos para execução", verbose_name="Tempo Estimado (min)")
+    time_estimated_minutes = models.PositiveIntegerField(null=True, blank=True, help_text="Tempo estimado em minutos para execução", verbose_name="Tempo Estimado (min)")
     safety_instructions = models.TextField(blank=True, null=True, verbose_name="Instruções de Segurança")
     # needs_equipment_stop = models.BooleanField(default=False, verbose_name="Requer Parada do Equipamento?")
     is_active = models.BooleanField(default=True, verbose_name="Sistemática Ativa?")

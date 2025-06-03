@@ -1,9 +1,12 @@
 # core/views.py
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 from django.http import JsonResponse
+from django.urls import reverse
 from django.utils import timezone # Para datas e horas com fuso horário
 from .models import Systematic
 import datetime
+
+from .models import Systematic, SystematicPartRequired, ExecutionRecord
 
 def calendario_view(request):
     """
@@ -66,8 +69,30 @@ def calendar_events_api(request):
                     'description': sistematic.description or '',
                     'equipment': sistematic.equipment.name,
                     'line': sistematic.equipment.line.name,
-                    'status': sistematic.get_overall_status()
+                    'status': sistematic.get_overall_status(),
+                    'detail_url': reverse('core:systematic_detail', args=[sistematic.id]), # <--- URL DE DETALHE
                 })
-    
-    # `safe=False` é necessário porque estamos retornando uma lista JSON no nível raiz.
     return JsonResponse(events, safe=False)
+
+def systematic_detail_view (request, pk): #view para o detalhamento de sistematica
+    systematic = get_object_or_404 (Systematic, pk = pk)
+    parts_required = SystematicPartRequired.objects.filter(systematic = systematic)
+    execution_history = ExecutionRecord.objects.filter(systematic = systematic).order_by('-scheduled_date', '-created_at')
+    
+    context ={
+        'systematic': systematic,
+        'parts_required': parts_required,
+        'execution_history': execution_history,
+        'vencidas_count': request.session.get('vencidas_count', 0)
+        
+    }
+    
+    today = timezone.now().date()
+    sistematicas_ativas = Systematic.objects.filter(is_active=True)
+    vencidas_count_atual = 0
+    for s_obj in sistematicas_ativas:
+        if s_obj.get_overall_status().startswith("Atrasada"):
+            vencidas_count_atual += 1
+    context['vencidas_count'] = vencidas_count_atual
+    
+    return render(request, 'core/systematic_detail.html', context)
