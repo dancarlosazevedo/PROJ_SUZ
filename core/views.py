@@ -1,9 +1,11 @@
 # core/views.py
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, render, redirect
 from django.http import JsonResponse
 from django.urls import reverse
 from django.utils import timezone # Para datas e horas com fuso horário
 from .models import Systematic
+from .forms import SystematicForm, ExecutionRecordForm
+from django.contrib.auth.decorators import login_required
 import datetime
 
 from .models import Systematic, SystematicPartRequired, ExecutionRecord
@@ -96,3 +98,51 @@ def systematic_detail_view (request, pk): #view para o detalhamento de sistemati
     context['vencidas_count'] = vencidas_count_atual
     
     return render(request, 'core/systematic_detail.html', context)
+
+@login_required #Necessário para garantir quem pode editar a sistematica.
+def systematic_edit_view(request, pk):
+    systematic = get_object_or_404(Systematic, pk=pk)
+    
+    if request.method == 'POST':
+        form = SystematicForm(request.POST, instance=systematic)
+        if form.is_valid():
+            form.save()
+            # messages.success(request, 'Sistemática atualizada com sucesso!') # Opcional: mensagens para o usuário
+            return redirect(reverse('core:systematic_detail', args=[systematic.pk]))
+        # else:
+            # messages.error(request, 'Por favor, corrija os erros abaixo.') # Opcional
+    else: # Método GET
+        form = SystematicForm(instance=systematic)
+        
+    context = {
+        'form': form,
+        'systematic': systematic, # Para exibir o nome ou outros detalhes no template do formulário
+        'vencidas_count': request.session.get('vencidas_count', 0) # ou recalcular
+    }
+    return render(request, 'core/systematic_form.html', context)
+
+
+@login_required #Necessário para garantir quem pode concluir a sistematica.
+def register_execution_view(request, pk):
+    systematic = get_object_or_404(Systematic, pk=pk)
+
+    if request.method == 'POST':
+        form = ExecutionRecordForm(request.POST)
+        if form.is_valid():
+            exec_record = form.save(commit=False)
+            exec_record.systematic = systematic
+            exec_record.executed_by = request.user
+            exec_record.save()
+            return redirect('core:systematic_detail', pk=pk)
+    else:
+        form = ExecutionRecordForm(initial={
+            'scheduled_date': timezone.now().date(),
+            'status': 'CONCLUIDA',
+            'execution_start_date': timezone.now(),
+            'execution_end_date': timezone.now(),
+        })
+
+    return render(request, 'core/execution_form.html', {
+        'form': form,
+        'systematic': systematic
+    })
