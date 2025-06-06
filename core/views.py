@@ -146,3 +146,9 @@ def register_execution_view(request, pk):
         'form': form,
         'systematic': systematic
     })
+    
+
+def equipamentos_por_linha(request):  #filtro equipamentos por linha
+    line_id = request.GET.get('line_id')
+    equipamentos = Equipment.objects.filter(line_id=line_id).values('id', 'name')
+    return JsonResponse(list(equipamentos), safe=False)

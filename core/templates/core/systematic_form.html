@@ -39,6 +39,12 @@
                         {% endfor %}
                     </div>
                     <div class="col-md-6 mb-3">
+                        {{ form.linha.label_tag }} {{ form.linha }}
+                        {% for error in form.linha.errors %}
+                            <div class="invalid-feedback d-block">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    <div class="col-md-6 mb-3">
                         {{ form.equipment.label_tag }} {{ form.equipment }}
                         {% for error in form.equipment.errors %}
                             <div class="invalid-feedback d-block">{{ error }}</div>
@@ -98,6 +104,28 @@
 
 {% block extra_js %}
 <script>
-   
+document.addEventListener("DOMContentLoaded", function() {
+    const linhaSelect = document.getElementById("id_linha");
+    const equipamentoSelect = document.getElementById("id_equipment");
+
+    if (linhaSelect && equipamentoSelect) {
+        linhaSelect.addEventListener("change", function() {
+            const linhaId = this.value;
+            if (!linhaId) return;
+
+            fetch(`/api/equipamentos-por-linha/?line_id=${linhaId}`)
+                .then(response => response.json())
+                .then(data => {
+                    equipamentoSelect.innerHTML = "";
+                    data.forEach(function(equip) {
+                        const option = document.createElement("option");
+                        option.value = equip.id;
+                        option.text = equip.name;
+                        equipamentoSelect.appendChild(option);
+                    });
+                });
+        });
+    }
+});
 </script>
 {% endblock %}

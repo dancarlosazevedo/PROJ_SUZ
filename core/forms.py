@@ -1,7 +1,15 @@
 from django import forms
-from .models import Systematic, TipoSystematic, Equipment, ExecutionRecord
+from .models import Systematic, TipoSystematic, Equipment, ExecutionRecord, Line
 
 class SystematicForm(forms.ModelForm):
+    
+    linha = forms.ModelChoiceField(
+        queryset=Line.objects.all(),
+        required=False,
+        label='Linha de Produção',
+        widget=forms.Select(attrs={'class': 'form-select', 'id': 'id_linha'})
+    )
+    
     class Meta:
         model = Systematic
         fields = [
@@ -15,10 +23,10 @@ class SystematicForm(forms.ModelForm):
             'is_active',
         ]
         
-        widget ={
+        widgets ={
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'tipo_systematic': forms.Select(attrs={'class': 'form-select'}),
-            'equipment': forms.Select(attrs={'class': 'form-select'}),
+            'equipment': forms.Select(attrs={'class': 'form-select', 'id': 'id_equipment'}),
             'range_days': forms.NumberInput(attrs={'class': 'form-control'}),
             'time_estimated_minutes': forms.NumberInput(attrs={'class': 'form-control'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
@@ -37,6 +45,15 @@ class SystematicForm(forms.ModelForm):
             'is_active': 'Sistemática Ativa?',
         }
         
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if 'instance' in kwargs:
+            instance = kwargs['instance']
+            self.fields['linha'].initial = instance.equipment.line if instance.equipment else None
+            self.fields['equipment'].queryset = Equipment.objects.filter(line=instance.equipment.line)
+        else:
+            self.fields['equipment'].queryset = Equipment.objects.none()
 class ExecutionRecordForm(forms.ModelForm):
     class Meta:
         model = ExecutionRecord
