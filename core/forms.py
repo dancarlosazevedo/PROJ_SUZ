@@ -48,12 +48,20 @@ class SystematicForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        if 'instance' in kwargs:
+            # EDIÇÃO: formulário com instância (GET)
+        if 'instance' in kwargs and kwargs['instance']:
             instance = kwargs['instance']
-            self.fields['linha'].initial = instance.equipment.line if instance.equipment else None
-            self.fields['equipment'].queryset = Equipment.objects.filter(line=instance.equipment.line)
-        else:
-            self.fields['equipment'].queryset = Equipment.objects.none()
+            linha = instance.equipment.line if instance.equipment else None
+            self.fields['linha'].initial = linha.pk if linha else None
+            self.fields['equipment'].queryset = Equipment.objects.filter(line=linha) if linha else Equipment.objects.none()
+
+        elif 'data' in kwargs:
+            linha_id = kwargs['data'].get('linha')
+            if linha_id:
+                self.fields['equipment'].queryset = Equipment.objects.filter(line_id=linha_id)
+            else:
+                self.fields['equipment'].queryset = Equipment.objects.none()
+
 class ExecutionRecordForm(forms.ModelForm):
     class Meta:
         model = ExecutionRecord

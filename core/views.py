@@ -3,9 +3,10 @@ from django.shortcuts import get_object_or_404, render, redirect
 from django.http import JsonResponse
 from django.urls import reverse
 from django.utils import timezone # Para datas e horas com fuso horário
-from .models import Systematic
+from .models import Systematic, SystematicPartRequired, Equipment, Line
 from .forms import SystematicForm, ExecutionRecordForm
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 import datetime
 
 from .models import Systematic, SystematicPartRequired, ExecutionRecord
@@ -152,3 +153,25 @@ def equipamentos_por_linha(request):  #filtro equipamentos por linha
     line_id = request.GET.get('line_id')
     equipamentos = Equipment.objects.filter(line_id=line_id).values('id', 'name')
     return JsonResponse(list(equipamentos), safe=False)
+
+@login_required 
+def systematic_create_view(request): #Nova sistematica
+    if request.method == 'POST':
+        form = SystematicForm(request.POST)
+        if form.is_valid():
+            systematic = form.save(commit=False)
+            systematic.created_by = request.user
+            systematic.save()
+            messages.success(request, f'Sistemática"{systematic.name}" criada com sucesso!')
+            return redirect(reverse('core:systematic_detail', args=[systematic.pk]))
+        else:
+            messages.error(request, 'Corrija os erros abaixo.')
+    else:
+        form = SystematicForm()
+        
+    context = {
+        'form': form,
+        'vencidas_count': request.session.get('vencidas_count', 0)
+    }
+    return render (request, 'core/systematic_form.html', context)
+
