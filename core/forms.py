@@ -1,5 +1,6 @@
 from django import forms
-from .models import Systematic, TipoSystematic, Equipment, ExecutionRecord, Line
+from .models import Systematic, TipoSystematic, Equipment, ExecutionRecord, Line, SystematicPartRequired, Part
+from django.forms import inlineformset_factory
 
 class SystematicForm(forms.ModelForm):
     
@@ -72,4 +73,37 @@ class ExecutionRecordForm(forms.ModelForm):
             'execution_end_date': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
             'status': forms.Select(attrs={'class': 'form-select'}),
             'observations': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+        
+SystematicPartFormSet = inlineformset_factory(
+    parent_model=Systematic,
+    model=SystematicPartRequired,
+    fields=['part', 'quantity_required', 'observation'],
+    extra=1,
+    can_delete=True,
+    widgets={
+        'part': forms.Select(attrs={'class': 'form-select'}),
+        'quantity_required': forms.NumberInput(attrs={'class': 'form-control'}),
+        'observation': forms.TextInput(attrs={'class': 'form-control'}),
+    },
+    labels={
+        'part': 'Peça',
+        'quantity_required': 'Quantidade',
+        'observation': 'Observação',
+    }
+)
+
+
+
+class PartForm(forms.ModelForm):
+    class Meta:
+        model = Part
+        fields = ['name', 'sap_code']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'sap_code': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+        labels = {
+            'name': 'Nome da Peça',
+            'sap_code': 'Código SAP',
         }

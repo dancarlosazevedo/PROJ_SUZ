@@ -2,14 +2,12 @@
 {% load static %}
 
 {% block title %}
-    {# Define o título da página dinamicamente #}
     {{ page_title|default:"Editar Sistemática" }}
 {% endblock %}
 
 {% block content %}
 <div class="container mt-4">
     <h2 class="mb-4">
-        {# Define o cabeçalho da página dinamicamente #}
         {% if page_title %}
             {{ page_title }}
         {% else %}
@@ -21,23 +19,26 @@
     <form method="post" novalidate>
         {% csrf_token %}
 
-        {# Abas de Navegação para o Formulário #}
+        <!-- Abas de navegação -->
         <ul class="nav nav-tabs mb-3" id="formTab" role="tablist">
             <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="geral-tab" data-bs-toggle="tab" data-bs-target="#geral" type="button" role="tab" aria-controls="geral" aria-selected="true">Geral</button>
+                <button class="nav-link active" id="geral-tab" data-bs-toggle="tab" data-bs-target="#geral" type="button" role="tab">Geral</button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="param-tab" data-bs-toggle="tab" data-bs-target="#param" type="button" role="tab" aria-controls="param" aria-selected="false">Parâmetros</button>
+                <button class="nav-link" id="param-tab" data-bs-toggle="tab" data-bs-target="#param" type="button" role="tab">Parâmetros</button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="desc-tab" data-bs-toggle="tab" data-bs-target="#desc" type="button" role="tab" aria-controls="desc" aria-selected="false">Descrição & Segurança</button>
+                <button class="nav-link" id="desc-tab" data-bs-toggle="tab" data-bs-target="#desc" type="button" role="tab">Descrição & Segurança</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="pecas-tab" data-bs-toggle="tab" data-bs-target="#pecas" type="button" role="tab">Peças</button>
             </li>
         </ul>
 
-        {# Conteúdo das Abas #}
+        <!-- Conteúdo das Abas -->
         <div class="tab-content card card-body" id="formTabContent">
             <!-- Aba: Geral -->
-            <div class="tab-pane fade show active" id="geral" role="tabpanel" aria-labelledby="geral-tab">
+            <div class="tab-pane fade show active" id="geral" role="tabpanel">
                 <div class="row">
                     <div class="col-md-12 mb-3">
                         <label for="{{ form.name.id_for_label }}" class="form-label">{{ form.name.label }}</label>
@@ -63,7 +64,7 @@
             </div>
 
             <!-- Aba: Parâmetros -->
-            <div class="tab-pane fade" id="param" role="tabpanel" aria-labelledby="param-tab">
+            <div class="tab-pane fade" id="param" role="tabpanel">
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label for="{{ form.range_days.id_for_label }}" class="form-label">{{ form.range_days.label }}</label>
@@ -85,8 +86,8 @@
                 </div>
             </div>
 
-            <!-- Aba: Descrição e Segurança -->
-            <div class="tab-pane fade" id="desc" role="tabpanel" aria-labelledby="desc-tab">
+            <!-- Aba: Descrição -->
+            <div class="tab-pane fade" id="desc" role="tabpanel">
                 <div class="mb-3">
                     <label for="{{ form.description.id_for_label }}" class="form-label">{{ form.description.label }}</label>
                     {{ form.description }}
@@ -98,11 +99,43 @@
                     {% for error in form.safety_instructions.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
                 </div>
             </div>
+
+            <!-- Aba: Peças -->
+            <div class="tab-pane fade" id="pecas" role="tabpanel">
+                <h5 class="mt-2 mb-3">Peças Necessárias</h5>
+                    <a href="{% url 'core:create_part' %}?next={{ request.path }}" class="btn btn-sm btn-outline-primary">
+                        + Nova Peça
+                    </a>
+                {{ formset.management_form }}
+                {% for form in formset %}
+                    <div class="row mb-3 border rounded p-2">
+                        <div class="col-md-5">
+                            <label>{{ form.part.label }}</label>
+                            {{ form.part }}
+                        </div>
+                        <div class="col-md-3">
+                            <label>{{ form.quantity_required.label }}</label>
+                            {{ form.quantity_required }}
+                        </div>
+                        <div class="col-md-3">
+                            <label>{{ form.observation.label }}</label>
+                            {{ form.observation }}
+                        </div>
+                        <div class="col-md-1 d-flex align-items-center">
+                            {% if form.DELETE %}
+                                <div class="form-check mt-4">
+                                    {{ form.DELETE }}
+                                    <label class="form-check-label">Excluir</label>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
         </div>
 
         <div class="text-end mt-4">
             <button type="submit" class="btn btn-primary">Salvar</button>
-            {# O botão cancelar volta para a página de detalhes se estiver editando, ou para o calendário se estiver criando #}
             {% if systematic %}
                 <a href="{% url 'core:systematic_detail' systematic.pk %}" class="btn btn-outline-secondary">Cancelar</a>
             {% else %}
@@ -116,26 +149,19 @@
 {% block extra_js %}
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-    // Pega os elementos select da Linha e do Equipamento
     const linhaSelect = document.getElementById("id_linha");
     const equipamentoSelect = document.getElementById("id_equipment");
 
     if (linhaSelect && equipamentoSelect) {
-        // Adiciona um listener para o evento de 'change' no select da Linha
         linhaSelect.addEventListener("change", function() {
             const linhaId = this.value;
-            // Limpa o select de equipamento para remover opções antigas
             equipamentoSelect.innerHTML = "<option value=''>--- Selecione um Equipamento ---</option>"; 
 
-            if (!linhaId) {
-                return; // Se nenhuma linha for selecionada, não faz nada
-            }
+            if (!linhaId) return;
 
-            // Busca os equipamentos da linha selecionada na nossa API
             fetch(`/api/equipamentos-por-linha/?line_id=${linhaId}`)
                 .then(response => response.json())
                 .then(data => {
-                    // Popula o select de equipamentos com os dados retornados
                     data.forEach(function(equip) {
                         const option = document.createElement("option");
                         option.value = equip.id;

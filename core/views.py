@@ -4,7 +4,7 @@ from django.http import JsonResponse
 from django.urls import reverse
 from django.utils import timezone # Para datas e horas com fuso horário
 from .models import Systematic, SystematicPartRequired, Equipment, Line
-from .forms import SystematicForm, ExecutionRecordForm
+from .forms import SystematicForm, ExecutionRecordForm, SystematicPartFormSet, PartForm
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 import datetime
@@ -103,24 +103,28 @@ def systematic_detail_view (request, pk): #view para o detalhamento de sistemati
 @login_required #Necessário para garantir quem pode editar a sistematica.
 def systematic_edit_view(request, pk):
     systematic = get_object_or_404(Systematic, pk=pk)
-    
+
     if request.method == 'POST':
         form = SystematicForm(request.POST, instance=systematic)
-        if form.is_valid():
+        formset = SystematicPartFormSet(request.POST, instance=systematic)
+
+        if form.is_valid() and formset.is_valid():
             form.save()
-            # messages.success(request, 'Sistemática atualizada com sucesso!') # Opcional: mensagens para o usuário
-            return redirect(reverse('core:systematic_detail', args=[systematic.pk]))
-        # else:
-            # messages.error(request, 'Por favor, corrija os erros abaixo.') # Opcional
-    else: # Método GET
+            formset.save()
+
+            messages.success(request, 'Sistemática atualizada com sucesso!')
+            return redirect('core:systematic_detail', pk=pk)
+        else:
+            messages.error(request, 'Corrija os erros abaixo.')
+    else:
         form = SystematicForm(instance=systematic)
-        
-    context = {
+        formset = SystematicPartFormSet(instance=systematic)
+
+    return render(request, 'core/systematic_form.html', {
         'form': form,
-        'systematic': systematic, # Para exibir o nome ou outros detalhes no template do formulário
-        'vencidas_count': request.session.get('vencidas_count', 0) # ou recalcular
-    }
-    return render(request, 'core/systematic_form.html', context)
+        'formset': formset,
+        'systematic': systematic
+    })
 
 
 @login_required #Necessário para garantir quem pode concluir a sistematica.
@@ -158,20 +162,89 @@ def equipamentos_por_linha(request):  #filtro equipamentos por linha
 def systematic_create_view(request): #Nova sistematica
     if request.method == 'POST':
         form = SystematicForm(request.POST)
-        if form.is_valid():
+        if form.is_valid() and formset.is_valid():
             systematic = form.save(commit=False)
             systematic.created_by = request.user
             systematic.save()
+            formset.instance =  systematic
+            formset.save()
             messages.success(request, f'Sistemática"{systematic.name}" criada com sucesso!')
             return redirect(reverse('core:systematic_detail', args=[systematic.pk]))
         else:
             messages.error(request, 'Corrija os erros abaixo.')
     else:
         form = SystematicForm()
+        formset = SystematicPartFormSet()
         
-    context = {
+    return render(request, 'core/systematic_form.html', {
         'form': form,
-        'vencidas_count': request.session.get('vencidas_count', 0)
-    }
-    return render (request, 'core/systematic_form.html', context)
+        'formset': formset,
+    })
+    
+@login_required
+def create_part_view(request):
+    if request.method == 'POST':
+        form = PartForm(request.POST)
+        if form.is_valid():
+            part = form.save()
+            messages.success(request, f'Peça "{part.name}" criada com sucesso!')
+            # Redireciona para onde estava (URL anterior)
+            return redirect(request.GET.get('next', 'core:systematic_create'))
+    else:
+        form = PartForm()
 
+    return render(request, 'core/part_form.html', {
+        'form': form,
+    })
+
+def dashboard_drilldown_view(request):
+    hoje = timezone.now().date()
+    linhas = Line.objects.all()
+    dashboard_data = []
+
+    for linha in linhas:
+        sistematicas = Systematic.objects.filter(equipment__line=linha, is_active=True)
+        total = sistematicas.count()
+
+        concluidas = atrasadas = programadas = 0
+
+        for s in sistematicas:
+            status = s.get_overall_status()
+            if status.startswith("Atrasada"):
+                atrasadas += 1
+            elif "Pendente" in status or "Próxima" in status:
+                programadas += 1
+            elif "Em Dia" in status or "Concluída" in status:
+                concluidas += 1
+
+        if total > 0:
+            dashboard_data.append({
+                'linha': linha.name,
+                'id': linha.pk,
+                'total': total,
+                'concluidas': concluidas,
+                'atrasadas': atrasadas,
+                'programadas': programadas,
+                'percentual_concluidas': round((concluidas / total) * 100, 1),
+                'percentual_atrasadas': round((atrasadas / total) * 100, 1),
+                'percentual_programadas': round((programadas / total) * 100, 1),
+            })
+
+    return render(request, 'core/dashboard_drilldown.html', {'linhas': dashboard_data})
+
+def sistematicas_por_equipamento(request):
+    equip_id = request.GET.get('equipment_id')
+    sistematicas = Systematic.objects.filter(equipment_id=equip_id, is_active=True)
+
+    data = []
+    for s in sistematicas:
+        data.append({
+            'id': s.pk,
+            'name': s.name,
+            'status': s.get_overall_status(),
+            'next_execution': s.next_execution_date_calculated.strftime('%d/%m/%Y') if s.next_execution_date_calculated else '—',
+            'detail_url': reverse('core:systematic_detail', args=[s.pk]),
+            'exec_url': reverse('core:register_execution', args=[s.pk])
+        })
+
+    return JsonResponse(data, safe=False)

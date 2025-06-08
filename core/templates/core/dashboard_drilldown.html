@@ -1,0 +1,135 @@
+
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Dashboard de Sistemáticas{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Dashboard de Sistemáticas por Linha</h2>
+    <canvas id="graficoLinhas" height="100"></canvas>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="modalSistematicas" tabindex="-1" aria-labelledby="modalSistematicasLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Sistemáticas de <span id="modalEquipamentoNome" class="text-primary"></span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <ul id="modalListaSistematicas" class="list-group"></ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+const dados = {{ linhas|default:"[]"|safe }};
+
+
+const labels = dados.map(item => item.linha);
+const dataConcluidas = dados.map(item => item.percentual_concluidas);
+const dataAtrasadas = dados.map(item => item.percentual_atrasadas);
+const dataProgramadas = dados.map(item => item.percentual_programadas);
+
+const ctx = document.getElementById('graficoLinhas');
+
+const chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: labels,
+        datasets: [
+            {
+                label: '% Concluídas',
+                data: dataConcluidas,
+                backgroundColor: 'green'
+            },
+            {
+                label: '% Atrasadas',
+                data: dataAtrasadas,
+                backgroundColor: 'red'
+            },
+            {
+                label: '% Programadas',
+                data: dataProgramadas,
+                backgroundColor: 'blue'
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            title: {
+                display: true,
+                text: 'Distribuição de Sistemáticas por Linha (%)'
+            },
+            tooltip: {
+                mode: 'index',
+                intersect: false
+            }
+        },
+        onClick: (event, elements) => {
+            if (elements.length > 0) {
+                const index = elements[0].index;
+                const linha = dados[index];
+                mostrarEquipamentos(linha);
+            }
+        }
+    }
+});
+
+function mostrarEquipamentos(linha) {
+    fetch(`/api/equipamentos-por-linha/?line_id=${linha.id}`)
+        .then(res => res.json())
+        .then(equipamentos => {
+            const lista = document.createElement('div');
+            lista.innerHTML = '<ul class="list-group">';
+            equipamentos.forEach(equip => {
+                lista.innerHTML += `
+                    <li class="list-group-item">
+                        <a href="#" class="text-decoration-none" onclick="mostrarSistematicas(${equip.id}, '${equip.name}')">${equip.name}</a>
+                    </li>`;
+            });
+            lista.innerHTML += '</ul>';
+            const modal = new bootstrap.Modal(document.getElementById('modalSistematicas'));
+            document.getElementById('modalListaSistematicas').innerHTML = lista.innerHTML;
+            document.getElementById('modalEquipamentoNome').innerText = linha.linha;
+            modal.show();
+        });
+}
+
+function mostrarSistematicas(equipId, nomeEquipamento) {
+    const ul = document.getElementById('modalListaSistematicas');
+    const titulo = document.getElementById('modalEquipamentoNome');
+    ul.innerHTML = '';
+    titulo.textContent = nomeEquipamento;
+
+    fetch(`/api/sistematicas-do-equipamento/?equipment_id=${equipId}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.length === 0) {
+                ul.innerHTML = '<li class="list-group-item text-muted">Nenhuma sistemática encontrada.</li>';
+            } else {
+                ul.innerHTML = '';
+                data.forEach(s => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item';
+                    li.innerHTML = `
+                        <strong><a href="${s.detail_url}" target="_blank">${s.name}</a></strong><br>
+                        <small class="text-muted">Status: ${s.status} | Próx: ${s.next_execution}</small><br>
+                        <a href="${s.exec_url}" class="btn btn-sm btn-outline-success mt-1">Concluir</a>
+                    `;
+                    ul.appendChild(li);
+                });
+            }
+        });
+}
+</script>
+{% endblock %}
