@@ -8,15 +8,29 @@ from .forms import SystematicForm, ExecutionRecordForm, SystematicPartFormSet, P
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 import datetime
-
+from django.contrib.auth.decorators import user_passes_test, login_required
+from .utils import group_required
 from .models import Systematic, SystematicPartRequired, ExecutionRecord
+
+
+from django.http import HttpResponseForbidden
+
+def group_required(*group_names):
+    def decorator(view_func):
+        def _wrapped_view(request, *args, **kwargs):
+            if not request.user.is_authenticated or not request.user.groups.filter(name__in=group_names).exists():
+                return HttpResponseForbidden("Acesso restrito.")
+            return view_func(request, *args, **kwargs)
+        return _wrapped_view
+    return decorator
+
 
 def calendario_view(request):
     """
     View que renderiza a página HTML onde o calendário será exibido.
     """
 
-    
+    linhas_todas = Line.objects.all()
     today = timezone.now().date()
     sistematicas_ativas = Systematic.objects.filter(is_active=True)
     vencidas_count = 0
@@ -27,54 +41,74 @@ def calendario_view(request):
             
     context = {
         'vencidas_count': vencidas_count,
+        'linhas_todas': linhas_todas,
     }
     return render(request, 'core/calendario_page.html', context)
 
 
+
 def calendar_events_api(request):
-    """
-    API View para fornecer os eventos (sistemáticas) para o calendário.
-    Espera parâmetros GET 'start' e 'end' no formato YYYY-MM-DD.
-    """
+    linha_id = request.GET.get('linha_id')
+    eventos = ExecutionRecord.objects.select_related('systematic', 'systematic__equipment', 'systematic__equipment__line')
+
+    if linha_id:
+        eventos = eventos.filter(systematic__equipment__line_id=linha_id)
+        
     start_date_str = request.GET.get('start')
     end_date_str = request.GET.get('end')
-
     events = []
 
     if not start_date_str or not end_date_str:
-        # Se as datas não forem fornecidas, pode retornar um erro ou um conjunto padrão.
-        # Por enquanto, retornaremos uma lista vazia ou um erro.
         return JsonResponse({'error': 'Parâmetros start e end são obrigatórios.'}, status=400)
 
     try:
-        # Converte as strings de data para objetos date do Python
-        # Bibliotecas de calendário geralmente enviam no formato ISO (YYYY-MM-DD)
         start_date = datetime.datetime.strptime(start_date_str.split('T')[0], "%Y-%m-%d").date()
         end_date = datetime.datetime.strptime(end_date_str.split('T')[0], "%Y-%m-%d").date()
     except ValueError:
         return JsonResponse({'error': 'Formato de data inválido. Use YYYY-MM-DD.'}, status=400)
 
     sistematicas = Systematic.objects.filter(is_active=True)
+    
+    if linha_id:
+     sistematicas = sistematicas.filter(equipment__line_id=linha_id)
+
+    color_map = {
+        'Atrasada': '#dc3545',                # vermelho
+        'Pendente': '#ffc107',                # amarelo
+        'Pendente Hoje': '#ffc107',           # amarelo
+        'Próxima': '#28a745',                 # verde
+        'Em Dia': '#198754',                  # verde escuro
+        'Agendada': '#0d6efd',                # azul
+        'Inativa': '#6c757d',                 # cinza
+        'Requer': '#17a2b8',                  # azul claro
+    }
 
     for sistematic in sistematicas:
-        next_exec_date = sistematic.next_execution_date_calculated 
+        next_exec_date = sistematic.next_execution_date_calculated
 
-        if next_exec_date:
-            # Verifica se a próxima data de execução está dentro do intervalo solicitado pelo calendário
-            if start_date <= next_exec_date <= end_date:
-                events.append({
-                    'id': sistematic.id, # ID da sistemática
-                    'title': f"{sistematic.name} ({sistematic.equipment.name})", # Título do evento no calendário
-                    'start': next_exec_date.isoformat(), # Data de início no formato YYYY-MM-DD
-                    # 'end': next_exec_date.isoformat(), # Se for um evento de dia único, start e end podem ser iguais
-                    # 'url': reverse('core:systematic_detail', args=[sistematic.id]), # Exemplo se você tiver uma URL de detalhe
-                    # 'color': '#007bff', # Você pode adicionar cores baseadas no tipo ou status
-                    'description': sistematic.description or '',
-                    'equipment': sistematic.equipment.name,
-                    'line': sistematic.equipment.line.name,
-                    'status': sistematic.get_overall_status(),
-                    'detail_url': reverse('core:systematic_detail', args=[sistematic.id]), # <--- URL DE DETALHE
-                })
+        if next_exec_date and start_date <= next_exec_date <= end_date:
+            status = sistematic.get_overall_status()
+            cor_base = '#adb5bd'  # cinza claro padrão
+
+            for chave, cor in color_map.items():
+                if status.startswith(chave):
+                    cor_base = cor
+                    break
+
+            events.append({
+                'id': sistematic.id,
+                'title': f"{sistematic.name} ({sistematic.equipment.name})",
+                'start': next_exec_date.isoformat(),
+                'description': sistematic.description or '',
+                'equipment': sistematic.equipment.name,
+                'line': sistematic.equipment.line.name,
+                'status': status,
+                'detail_url': reverse('core:systematic_detail', args=[sistematic.id]),
+                'backgroundColor': cor_base,
+                'borderColor': cor_base,
+                'textColor': '#fff'
+            })
+
     return JsonResponse(events, safe=False)
 
 def systematic_detail_view (request, pk): #view para o detalhamento de sistematica
@@ -100,7 +134,7 @@ def systematic_detail_view (request, pk): #view para o detalhamento de sistemati
     
     return render(request, 'core/systematic_detail.html', context)
 
-@login_required #Necessário para garantir quem pode editar a sistematica.
+@group_required('Administrador', 'Técnico')
 def systematic_edit_view(request, pk):
     systematic = get_object_or_404(Systematic, pk=pk)
 
@@ -127,7 +161,7 @@ def systematic_edit_view(request, pk):
     })
 
 
-@login_required #Necessário para garantir quem pode concluir a sistematica.
+@group_required('Administrador', 'Técnico')
 def register_execution_view(request, pk):
     systematic = get_object_or_404(Systematic, pk=pk)
 
@@ -158,7 +192,7 @@ def equipamentos_por_linha(request):  #filtro equipamentos por linha
     equipamentos = Equipment.objects.filter(line_id=line_id).values('id', 'name')
     return JsonResponse(list(equipamentos), safe=False)
 
-@login_required 
+@group_required('Administrador', 'Técnico')
 def systematic_create_view(request): #Nova sistematica
     if request.method == 'POST':
         form = SystematicForm(request.POST)
@@ -181,7 +215,7 @@ def systematic_create_view(request): #Nova sistematica
         'formset': formset,
     })
     
-@login_required
+@group_required('Administrador', 'Técnico')
 def create_part_view(request):
     if request.method == 'POST':
         form = PartForm(request.POST)

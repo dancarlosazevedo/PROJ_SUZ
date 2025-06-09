@@ -1,11 +1,12 @@
-{% extends "core/base.html" %}
+{% extends "core/base.html" %}{% load status_tags %}
+
 {% load static %}
 
 {% block title %}Calendário de Sistemáticas{% endblock %}
 
 {% block extra_head %}
-    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/main.min.css" rel="stylesheet">
-    <style>
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/main.min.css" rel="stylesheet"/>
+<style>
         #calendar-container {
             max-width: 1000px; /* Ajuste conforme preferir */
             margin: 20px auto;
@@ -61,46 +62,53 @@
 {% endblock %}
 
 {% block content %}
-<div class="mt-4"> 
-    <div class="text-center mb-4">
-        <h1>Calendário de Sistemáticas</h1>
-    </div>
-
-        <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>Calendário de Sistemáticas</h1>
-        <a href="{% url 'core:systematic_create' %}" class="btn btn-primary">
+<div class="mt-4">
+<div class="text-center mb-4">
+<h1>Calendário de Sistemáticas</h1>
+</div>
+<div class="d-flex justify-content-between align-items-center mb-4">
+<h1>Calendário de Sistemáticas</h1>
+<a class="btn btn-primary" href="{% url 'core:systematic_create' %}">
             + Criar Nova Sistemática
         </a>
-    </div>
+</div>
 
-    <div class="summary mb-3 p-3 bg-light border rounded">
-        <p><strong>Sistemáticas Vencidas:</strong> <span id="vencidas-count" class="badge bg-danger">{{ vencidas_count|default:0 }}</span></p>
-        <div class="btn-group" role="group" aria-label="Filtros de período">
-            <button type="button" class="btn btn-outline-primary filter-btn" data-days="7">Próximos 7 dias</button>
-            <button type="button" class="btn btn-outline-primary filter-btn" data-days="15">Próximos 15 dias</button>
-            <button type="button" class="btn btn-outline-primary filter-btn" data-days="30">Próximos 30 dias</button>
-            <button type="button" class="btn btn-outline-secondary" id="clear-filter-btn">Limpar Seleção</button>
-        </div>
-    </div>
-    
-    <div id="sistematicas-do-dia-ou-periodo" class="mt-4 mb-4">
-        <ul id="lista-sistematicas-selecionadas" class="list-group">
-            <li class="list-group-item text-muted">Clique em um dia do calendário ou use os filtros acima para ver detalhes.</li>
-        </ul>
-    </div>
+<div class="mb-3">
+  <label for="filtroLinha" class="form-label">Filtrar por Linha:</label>
+  <select id="filtroLinha" class="form-select">
+      <option value="">Todas as Linhas</option>
+      {% for linha in linhas_todas %}
+          <option value="{{ linha.id }}">{{ linha.name }}</option>
+      {% endfor %}
+  </select>
+</div>
 
-    <div id="calendar-container">
-        <div id="calendar">
-            </div>
-    </div>
+
+<div class="summary mb-3 p-3 bg-light border rounded">
+<p><strong>Sistemáticas Vencidas:</strong> <span class="badge bg-danger" id="vencidas-count">{{ vencidas_count|default:0 }}</span></p>
+<div aria-label="Filtros de período" class="btn-group" role="group">
+<button class="btn btn-outline-primary filter-btn" data-days="7" type="button">Próximos 7 dias</button>
+<button class="btn btn-outline-primary filter-btn" data-days="15" type="button">Próximos 15 dias</button>
+<button class="btn btn-outline-primary filter-btn" data-days="30" type="button">Próximos 30 dias</button>
+<button class="btn btn-outline-secondary" id="clear-filter-btn" type="button">Limpar Seleção</button>
+</div>
+</div>
+<div class="mt-4 mb-4" id="sistematicas-do-dia-ou-periodo">
+<ul class="list-group" id="lista-sistematicas-selecionadas">
+<li class="list-group-item text-muted">Clique em um dia do calendário ou use os filtros acima para ver detalhes.</li>
+</ul>
+</div>
+<div id="calendar-container">
+<div id="calendar">
+</div>
+</div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/locales/pt-br.global.min.js"></script>
-
-    <script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/locales/pt-br.global.min.js"></script>
+<script>
     document.addEventListener('DOMContentLoaded', function() {
         var calendarEl = document.getElementById('calendar');
         var sistematicasListEl = document.getElementById('lista-sistematicas-selecionadas');
@@ -126,18 +134,11 @@
                 list:     'Lista'
             },
             events: {
-                url: "{% url 'core:calendar_events_api' %}", // URL da sua API de eventos
-                success: function(data) {
-                    eventCounts = {}; 
-                    if (Array.isArray(data)) {
-                        data.forEach(function(event) {
-                            if (event.start) {
-                                const dateStr = event.start.split('T')[0];
-                                eventCounts[dateStr] = (eventCounts[dateStr] || 0) + 1;
-                            }
-                        });
-                    }
-                    return data; // Retorna os dados originais para o FullCalendar
+                url: "{% url 'core:calendar_events_api' %}",
+                extraParams: function() {
+                    return {
+                        linha_id: document.getElementById('filtroLinha').value
+                    };
                 },
                 failure: function() {
                     console.error("Falha ao carregar eventos para o calendário.");
@@ -176,6 +177,9 @@
 
         calendar.render();
 
+        document.getElementById('filtroLinha').addEventListener('change', function() {
+            calendar.refetchEvents();
+        });
         function fetchSistematicasPorData(dateStr) {
             const targetDate = dateStr.split('T')[0]; 
             const url = `{% url 'core:calendar_events_api' %}?start=${targetDate}&end=${targetDate}`;
@@ -206,7 +210,13 @@
                             listItem.innerHTML = `
                                 <strong>${titleElement}</strong><br>
                                 <small class="text-muted">Equip: ${sistematic.equipment || 'N/A'} (Linha: ${sistematic.line || 'N/A'})</small><br>
-                                <small class="text-muted">Status: ${sistematic.status || 'N/A'}</small><br>
+                                <small>Status: 
+                                    <span class="badge bg-${getStatusClass(sistematic.status || '')}">
+                                        ${sistematic.status || 'N/A'}
+                                    </span>
+                                </small><br>
+
+
                                 <em>${sistematic.description || 'Sem descrição.'}</em>
                             `;
                             sistematicasListEl.appendChild(listItem);
@@ -285,5 +295,18 @@
             sistematicasListEl.innerHTML = '<li class="list-group-item text-muted">Clique em um dia do calendário ou use os filtros acima para ver detalhes.</li>';
         });
     });
+
+        function getStatusClass(status) {
+        status = status.toLowerCase();
+            if (status.includes('atrasada')) return 'danger';
+            if (status.includes('pendente hoje')) return 'warning';
+            if (status.includes('próxima') || status.includes('em dia')) return 'success';
+            if (status.includes('agendada')) return 'primary';
+            if (status.includes('inativa')) return 'secondary';
+            if (status.includes('1º agendamento')) return 'info';
+            return 'light';}
     </script>
+
+
+
 {% endblock %}

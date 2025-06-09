@@ -1,0 +1,71 @@
+[
+    {
+        "model": "auth.group",
+        "pk": 1,
+        "fields": {
+            "name": "Administrador"
+        }
+    },
+    {
+        "model": "auth.group",
+        "pk": 2,
+        "fields": {
+            "name": "T\u00e9cnico"
+        }
+    },
+    {
+        "model": "auth.group",
+        "pk": 3,
+        "fields": {
+            "name": "Visualizador"
+        }
+    },
+    {
+        "model": "auth.user",
+        "pk": 1,
+        "fields": {
+            "username": "admin",
+            "password": "pbkdf2_sha256$260000$admin$fakeadminhash",
+            "is_superuser": true,
+            "is_staff": true,
+            "is_active": true,
+            "last_login": null,
+            "date_joined": "2025-06-09T00:25:59.418364",
+            "groups": [
+                1
+            ]
+        }
+    },
+    {
+        "model": "auth.user",
+        "pk": 2,
+        "fields": {
+            "username": "tecnico",
+            "password": "pbkdf2_sha256$260000$tecnico$faketecnicohash",
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "last_login": null,
+            "date_joined": "2025-06-09T00:25:59.418364",
+            "groups": [
+                2
+            ]
+        }
+    },
+    {
+        "model": "auth.user",
+        "pk": 3,
+        "fields": {
+            "username": "visual",
+            "password": "pbkdf2_sha256$260000$visual$fakevisualhash",
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "last_login": null,
+            "date_joined": "2025-06-09T00:25:59.418364",
+            "groups": [
+                3
+            ]
+        }
+    }
+]

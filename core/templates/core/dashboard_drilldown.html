@@ -5,31 +5,29 @@
 {% block title %}Dashboard de Sistemáticas{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2 class="mb-4">Dashboard de Sistemáticas por Linha</h2>
-    <canvas id="graficoLinhas" height="100"></canvas>
+<div class="container-fluid mt-4">
+<h2 class="mb-4">Dashboard de Sistemáticas por Linha</h2>
+<canvas height="100" id="graficoLinhas"></canvas>
 </div>
-
 <!-- Modal -->
-<div class="modal fade" id="modalSistematicas" tabindex="-1" aria-labelledby="modalSistematicasLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-scrollable">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Sistemáticas de <span id="modalEquipamentoNome" class="text-primary"></span></h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-      </div>
-      <div class="modal-body">
-        <ul id="modalListaSistematicas" class="list-group"></ul>
-      </div>
-    </div>
-  </div>
+<div aria-hidden="true" aria-labelledby="modalSistematicasLabel" class="modal fade" id="modalSistematicas" tabindex="-1">
+<div class="modal-dialog modal-lg modal-dialog-scrollable">
+<div class="modal-content">
+<div class="modal-header">
+<h5 class="modal-title">Sistemáticas de <span class="text-primary" id="modalEquipamentoNome"></span></h5>
+<button aria-label="Fechar" class="btn-close" data-bs-dismiss="modal" type="button"></button>
+</div>
+<div class="modal-body">
+<ul class="list-group" id="modalListaSistematicas"></ul>
+</div>
+</div>
+</div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
 <script>
 const dados = {{ linhas|default:"[]"|safe }};
 

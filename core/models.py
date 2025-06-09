@@ -4,6 +4,7 @@ from django.db import models
 from django.conf import settings # Para ForeignKey para User
 from django.utils import timezone
 from datetime import timedelta
+from simple_history.models import HistoricalRecords
 
 # --------------------
 # Modelos Principais
@@ -102,6 +103,8 @@ class Systematic(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Data de Criação")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Data de Atualização")
+    
+    history = HistoricalRecords()
 
     class Meta:
         verbose_name = "Sistemática"
@@ -233,8 +236,27 @@ class ExecutionRecord(models.Model):
             if self.execution_end_date < self.execution_start_date:
                 from django.core.exceptions import ValidationError
                 raise ValidationError({'execution_end_date': 'A data de término não pode ser anterior à data de início.'})
+            
+            
+        def save(self, *args, **kwargs):
+            super().save(*args, **kwargs)
 
-    # O save() não precisa mais atualizar a Systematic pai diretamente com datas,
-    # já que as datas na Systematic são calculadas via @property.
-    # No entanto, o save() do ExecutionRecord pode ser usado para outras lógicas,
-    # como enviar notificações quando um status muda, etc.
+            # ⚙️ Agendamento automático da próxima execução se esta foi concluída
+            if self.status in ['CONCLUIDA', 'CONCLUIDA_ATRASO']:
+                s = self.systematic
+
+                # Se a sistemática tem intervalo definido
+                if s.range_days and s.range_days > 0:
+                    proxima_data = self.scheduled_date + timedelta(days=s.range_days)
+
+                    # Verifica se já existe execução programada nessa data
+                    existe = s.execution_records.filter(scheduled_date=proxima_data).exists()
+
+                    if not existe:
+                        ExecutionRecord.objects.create(
+                            systematic=s,
+                            scheduled_date=proxima_data,
+                            status='PENDENTE'
+                        )
+
+ 

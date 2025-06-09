@@ -6,143 +6,137 @@
 {% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2 class="mb-4">
+<div class="container-fluid mt-4">
+<h2 class="mb-4">
         {% if page_title %}
             {{ page_title }}
         {% else %}
             Editar Sistemática: <small class="text-muted">{{ systematic.name }}</small>
         {% endif %}
     </h2>
-    <hr>
-
-    <form method="post" novalidate>
+<hr/>
+<form method="post" novalidate="">
         {% csrf_token %}
 
         <!-- Abas de navegação -->
-        <ul class="nav nav-tabs mb-3" id="formTab" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="geral-tab" data-bs-toggle="tab" data-bs-target="#geral" type="button" role="tab">Geral</button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="param-tab" data-bs-toggle="tab" data-bs-target="#param" type="button" role="tab">Parâmetros</button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="desc-tab" data-bs-toggle="tab" data-bs-target="#desc" type="button" role="tab">Descrição & Segurança</button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="pecas-tab" data-bs-toggle="tab" data-bs-target="#pecas" type="button" role="tab">Peças</button>
-            </li>
-        </ul>
-
-        <!-- Conteúdo das Abas -->
-        <div class="tab-content card card-body" id="formTabContent">
-            <!-- Aba: Geral -->
-            <div class="tab-pane fade show active" id="geral" role="tabpanel">
-                <div class="row">
-                    <div class="col-md-12 mb-3">
-                        <label for="{{ form.name.id_for_label }}" class="form-label">{{ form.name.label }}</label>
+<ul class="nav nav-tabs mb-3" id="formTab" role="tablist">
+<li class="nav-item" role="presentation">
+<button class="nav-link active" data-bs-target="#geral" data-bs-toggle="tab" id="geral-tab" role="tab" type="button">Geral</button>
+</li>
+<li class="nav-item" role="presentation">
+<button class="nav-link" data-bs-target="#param" data-bs-toggle="tab" id="param-tab" role="tab" type="button">Parâmetros</button>
+</li>
+<li class="nav-item" role="presentation">
+<button class="nav-link" data-bs-target="#desc" data-bs-toggle="tab" id="desc-tab" role="tab" type="button">Descrição &amp; Segurança</button>
+</li>
+<li class="nav-item" role="presentation">
+<button class="nav-link" data-bs-target="#pecas" data-bs-toggle="tab" id="pecas-tab" role="tab" type="button">Peças</button>
+</li>
+</ul>
+<!-- Conteúdo das Abas -->
+<div class="tab-content card card-body" id="formTabContent">
+<!-- Aba: Geral -->
+<div class="tab-pane fade show active" id="geral" role="tabpanel">
+<div class="row">
+<div class="col-md-12 mb-3">
+<label class="form-label" for="{{ form.name.id_for_label }}">{{ form.name.label }}</label>
                         {{ form.name }}
                         {% for error in form.name.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
                     </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="{{ form.tipo_systematic.id_for_label }}" class="form-label">{{ form.tipo_systematic.label }}</label>
+<div class="col-md-6 mb-3">
+<label class="form-label" for="{{ form.tipo_systematic.id_for_label }}">{{ form.tipo_systematic.label }}</label>
                         {{ form.tipo_systematic }}
                         {% for error in form.tipo_systematic.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
                     </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="{{ form.linha.id_for_label }}" class="form-label">{{ form.linha.label }}</label>
+<div class="col-md-6 mb-3">
+<label class="form-label" for="{{ form.linha.id_for_label }}">{{ form.linha.label }}</label>
                         {{ form.linha }}
                         {% for error in form.linha.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
                     </div>
-                    <div class="col-md-12 mb-3">
-                        <label for="{{ form.equipment.id_for_label }}" class="form-label">{{ form.equipment.label }}</label>
+<div class="col-md-12 mb-3">
+<label class="form-label" for="{{ form.equipment.id_for_label }}">{{ form.equipment.label }}</label>
                         {{ form.equipment }}
                         {% for error in form.equipment.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
                     </div>
-                </div>
-            </div>
-
-            <!-- Aba: Parâmetros -->
-            <div class="tab-pane fade" id="param" role="tabpanel">
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="{{ form.range_days.id_for_label }}" class="form-label">{{ form.range_days.label }}</label>
+</div>
+</div>
+<!-- Aba: Parâmetros -->
+<div class="tab-pane fade" id="param" role="tabpanel">
+<div class="row">
+<div class="col-md-6 mb-3">
+<label class="form-label" for="{{ form.range_days.id_for_label }}">{{ form.range_days.label }}</label>
                         {{ form.range_days }}
                         {% for error in form.range_days.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
                     </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="{{ form.time_estimated_minutes.id_for_label }}" class="form-label">{{ form.time_estimated_minutes.label }}</label>
+<div class="col-md-6 mb-3">
+<label class="form-label" for="{{ form.time_estimated_minutes.id_for_label }}">{{ form.time_estimated_minutes.label }}</label>
                         {{ form.time_estimated_minutes }}
                         {% for error in form.time_estimated_minutes.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
                     </div>
-                    <div class="col-12 mt-3">
-                        <div class="form-check">
+<div class="col-12 mt-3">
+<div class="form-check">
                             {{ form.is_active }}
-                            <label for="{{ form.is_active.id_for_label }}" class="form-check-label">{{ form.is_active.label }}</label>
+                            <label class="form-check-label" for="{{ form.is_active.id_for_label }}">{{ form.is_active.label }}</label>
                             {% for error in form.is_active.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
                         </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Aba: Descrição -->
-            <div class="tab-pane fade" id="desc" role="tabpanel">
-                <div class="mb-3">
-                    <label for="{{ form.description.id_for_label }}" class="form-label">{{ form.description.label }}</label>
+</div>
+</div>
+</div>
+<!-- Aba: Descrição -->
+<div class="tab-pane fade" id="desc" role="tabpanel">
+<div class="mb-3">
+<label class="form-label" for="{{ form.description.id_for_label }}">{{ form.description.label }}</label>
                     {{ form.description }}
                     {% for error in form.description.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
                 </div>
-                <div class="mb-3">
-                    <label for="{{ form.safety_instructions.id_for_label }}" class="form-label">{{ form.safety_instructions.label }}</label>
+<div class="mb-3">
+<label class="form-label" for="{{ form.safety_instructions.id_for_label }}">{{ form.safety_instructions.label }}</label>
                     {{ form.safety_instructions }}
                     {% for error in form.safety_instructions.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
                 </div>
-            </div>
-
-            <!-- Aba: Peças -->
-            <div class="tab-pane fade" id="pecas" role="tabpanel">
-                <h5 class="mt-2 mb-3">Peças Necessárias</h5>
-                    <a href="{% url 'core:create_part' %}?next={{ request.path }}" class="btn btn-sm btn-outline-primary">
+</div>
+<!-- Aba: Peças -->
+<div class="tab-pane fade" id="pecas" role="tabpanel">
+<h5 class="mt-2 mb-3">Peças Necessárias</h5>
+<a class="btn btn-sm btn-outline-primary" href="{% url 'core:create_part' %}?next={{ request.path }}">
                         + Nova Peça
                     </a>
                 {{ formset.management_form }}
                 {% for form in formset %}
                     <div class="row mb-3 border rounded p-2">
-                        <div class="col-md-5">
-                            <label>{{ form.part.label }}</label>
+<div class="col-md-5">
+<label>{{ form.part.label }}</label>
                             {{ form.part }}
                         </div>
-                        <div class="col-md-3">
-                            <label>{{ form.quantity_required.label }}</label>
+<div class="col-md-3">
+<label>{{ form.quantity_required.label }}</label>
                             {{ form.quantity_required }}
                         </div>
-                        <div class="col-md-3">
-                            <label>{{ form.observation.label }}</label>
+<div class="col-md-3">
+<label>{{ form.observation.label }}</label>
                             {{ form.observation }}
                         </div>
-                        <div class="col-md-1 d-flex align-items-center">
+<div class="col-md-1 d-flex align-items-center">
                             {% if form.DELETE %}
                                 <div class="form-check mt-4">
                                     {{ form.DELETE }}
                                     <label class="form-check-label">Excluir</label>
-                                </div>
+</div>
                             {% endif %}
                         </div>
-                    </div>
+</div>
                 {% endfor %}
             </div>
-        </div>
-
-        <div class="text-end mt-4">
-            <button type="submit" class="btn btn-primary">Salvar</button>
+</div>
+<div class="text-end mt-4">
+<button class="btn btn-primary" type="submit">Salvar</button>
             {% if systematic %}
-                <a href="{% url 'core:systematic_detail' systematic.pk %}" class="btn btn-outline-secondary">Cancelar</a>
+                <a class="btn btn-outline-secondary" href="{% url 'core:systematic_detail' systematic.pk %}">Cancelar</a>
             {% else %}
-                <a href="{% url 'core:home_calendario' %}" class="btn btn-outline-secondary">Cancelar</a>
+                <a class="btn btn-outline-secondary" href="{% url 'core:home_calendario' %}">Cancelar</a>
             {% endif %}
         </div>
-    </form>
+</form>
 </div>
 {% endblock %}
 

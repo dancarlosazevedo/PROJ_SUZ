@@ -13,6 +13,7 @@ urlpatterns = [
     path('peca/nova/', views.create_part_view, name='create_part'),
     path('painel/', views.dashboard_drilldown_view, name='dashboard_drilldown'),
     path('api/sistematicas-do-equipamento/', views.sistematicas_por_equipamento, name='sistematicas_por_equipamento'), #Drill down do equipamento
+    
 
 
     

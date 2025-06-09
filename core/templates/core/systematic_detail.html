@@ -4,31 +4,23 @@
 {% block title %}Detalhes: {{ systematic.name }}{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-   <div class="d-flex justify-content-between align-items-center mb-3">
-        <h1>{{ systematic.name }}</h1>
-        <div>
-            <a href="{% url 'core:register_execution' systematic.pk %}" class="btn btn-success me-2">Registrar Execução (Concluir)</a> <a href="{% url 'core:systematic_edit' systematic.pk %}" class="btn btn-primary">Editar Sistemática</a>
-            
-        </div>
-    </div>
-    
-    <div class="card mb-4">
-        <div class="card-header">
+<div class="container-fluid mt-4">
+<div class="d-flex justify-content-between align-items-center mb-3">
+<h1>{{ systematic.name }}</h1>
+<div>
+<a class="btn btn-success me-2" href="{% url 'core:register_execution' systematic.pk %}">Registrar Execução (Concluir)</a> <a class="btn btn-primary" href="{% url 'core:systematic_edit' systematic.pk %}">Editar Sistemática</a>
+</div>
+</div>
+<div class="card mb-4">
+<div class="card-header">
             Informações Gerais
         </div>
-        <div class="card-body">
-            <p><strong>Equipamento:</strong> {{ systematic.equipment.name }} (Linha: {{ systematic.equipment.line.name }})</p>
-            <p><strong>Tipo:</strong> {{ systematic.tipo_systematic.nome }}</p>
-            <p><strong>Descrição do Procedimento:</strong> {{ systematic.description|linebreaksbr|default:"Nenhuma descrição fornecida." }}</p>
-            <p><strong>Frequência:</strong> A cada {{ systematic.range_days }} dias (se aplicável)</p>
-            <p><strong>Status Atual:</strong> <span class="badge 
-                {% if 'Atrasada' in systematic.get_overall_status %}bg-danger
-                {% elif 'Pendente Hoje' in systematic.get_overall_status %}bg-warning text-dark
-                {% elif 'Próxima' in systematic.get_overall_status %}bg-info text-dark
-                {% elif 'Requer' in systematic.get_overall_status %}bg-secondary
-                {% elif 'Inativa' in systematic.get_overall_status %}bg-dark
-                {% else %}bg-success{% endif %}">
+<div class="card-body">
+<p><strong>Equipamento:</strong> {{ systematic.equipment.name }} (Linha: {{ systematic.equipment.line.name }})</p>
+<p><strong>Tipo:</strong> {{ systematic.tipo_systematic.nome }}</p>
+<p><strong>Descrição do Procedimento:</strong> {{ systematic.description|linebreaksbr|default:"Nenhuma descrição fornecida." }}</p>
+<p><strong>Frequência:</strong> A cada {{ systematic.range_days }} dias (se aplicável)</p>
+<p><strong>Status Atual:</strong> <span class="badge {% if 'Atrasada' in systematic.get_overall_status %}bg-danger {% elif 'Pendente Hoje' in systematic.get_overall_status %}bg-warning text-dark {% elif 'Próxima' in systematic.get_overall_status %}bg-info text-dark {% elif 'Requer' in systematic.get_overall_status %}bg-secondary {% elif 'Inativa' in systematic.get_overall_status %}bg-dark {% else %}bg-success{% endif %}">
                 {{ systematic.get_overall_status }}
             </span></p>
             {% if systematic.next_execution_date_calculated %}
@@ -38,20 +30,20 @@
                 <p><strong>Última Execução Concluída em:</strong> {{ systematic.last_execution_date_display|date:"d/m/Y" }}</p>
             {% endif %}
             <p><strong>Tempo Estimado:</strong> {{ systematic.time_estimated_minutes|default:"N/A" }} minutos</p>
-            <p><strong>Requer Parada do Equipamento:</strong> {% if systematic.needs_equipment_stop %}Sim{% else %}Não{% endif %}</p>
-            <p><strong>Ativa:</strong> {% if systematic.is_active %}Sim{% else %}Não{% endif %}</p>
+<p><strong>Requer Parada do Equipamento:</strong> {% if systematic.needs_equipment_stop %}Sim{% else %}Não{% endif %}</p>
+<p><strong>Ativa:</strong> {% if systematic.is_active %}Sim{% else %}Não{% endif %}</p>
             {% if systematic.safety_instructions %}
                 <p><strong>Instruções de Segurança:</strong> {{ systematic.safety_instructions|linebreaksbr }}</p>
             {% endif %}
         </div>
-    </div>
+</div>
 
     {% if parts_required.exists %}
     <div class="card mb-4">
-        <div class="card-header">
+<div class="card-header">
             Peças Necessárias
         </div>
-        <ul class="list-group list-group-flush">
+<ul class="list-group list-group-flush">
             {% for item_peca in parts_required %}
                 <li class="list-group-item">
                     {{ item_peca.quantity_required }} x {{ item_peca.part.name }} ({{ item_peca.part.sap_code }})
@@ -59,28 +51,23 @@
                 </li>
             {% endfor %}
         </ul>
-    </div>
+</div>
     {% endif %}
 
     <div class="card">
-        <div class="card-header">
+<div class="card-header">
             Histórico de Execuções
         </div>
         {% if execution_history.exists %}
             <ul class="list-group list-group-flush">
                 {% for execucao in execution_history %}
                     <li class="list-group-item">
-                        <p class="mb-1">
-                            <strong>Data Agendada:</strong> {{ execucao.scheduled_date|date:"d/m/Y" }} - 
-                            <strong>Status:</strong> <span class="badge 
-                                {% if execucao.status == 'CONCLUIDA' or execucao.status == 'CONCLUIDA_ATRASO' %}bg-success
-                                {% elif execucao.status == 'PENDENTE' %}bg-warning text-dark
-                                {% elif execucao.status == 'EM_ANDAMENTO' %}bg-info text-dark
-                                {% elif execucao.status == 'NAO_REALIZADA' or execucao.status == 'CANCELADA' %}bg-danger
-                                {% else %}bg-secondary{% endif %}">
+<p class="mb-1">
+<strong>Data Agendada:</strong> {{ execucao.scheduled_date|date:"d/m/Y" }} - 
+                            <strong>Status:</strong> <span class="badge {% if execucao.status == 'CONCLUIDA' or execucao.status == 'CONCLUIDA_ATRASO' %}bg-success {% elif execucao.status == 'PENDENTE' %}bg-warning text-dark {% elif execucao.status == 'EM_ANDAMENTO' %}bg-info text-dark {% elif execucao.status == 'NAO_REALIZADA' or execucao.status == 'CANCELADA' %}bg-danger {% else %}bg-secondary{% endif %}">
                                 {{ execucao.get_status_display }}
                             </span>
-                        </p>
+</p>
                         {% if execucao.execution_start_date %}
                             <small class="d-block text-muted">Início: {{ execucao.execution_start_date|date:"d/m/Y H:i" }}</small>
                         {% endif %}
@@ -98,12 +85,12 @@
             </ul>
         {% else %}
             <div class="card-body">
-                <p class="text-muted">Nenhum registro de execução para esta sistemática ainda.</p>
-            </div>
+<p class="text-muted">Nenhum registro de execução para esta sistemática ainda.</p>
+</div>
         {% endif %}
     </div>
-    <div class="mt-3">
-        <a href="{% url 'core:home_calendario' %}" class="btn btn-outline-secondary">Voltar para o Calendário</a>
-    </div>
+<div class="mt-3">
+<a class="btn btn-outline-secondary" href="{% url 'core:home_calendario' %}">Voltar para o Calendário</a>
+</div>
 </div>
 {% endblock %}
