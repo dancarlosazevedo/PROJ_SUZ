@@ -1,23 +1,34 @@
 {% extends "core/base.html" %}
-{% block title %}Login{% endblock %}
+{% load form_tags %}
+{% block title %}Login - Sistema de Sistemáticas{% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-5">
-<h2 class="mb-4">Login</h2>
+<div class="d-flex align-items-center justify-content-center" style="min-height: 80vh;">
+  <div class="card shadow-lg p-4" style="max-width: 400px; width: 100%;">
+    <h3 class="text-center mb-4">Acesso ao Sistema</h3>
+
     {% if form.errors %}
-    <div class="alert alert-danger">Usuário ou senha inválidos.</div>
+    <div class="alert alert-danger text-center">
+      Usuário ou senha inválidos.
+    </div>
     {% endif %}
-    <form method="post">
-        {% csrf_token %}
-        <div class="mb-3">
-<label class="form-label" for="id_username">Usuário</label>
-            {{ form.username }}
-        </div>
-<div class="mb-3">
-<label class="form-label" for="id_password">Senha</label>
-            {{ form.password }}
-        </div>
-<button class="btn btn-primary" type="submit">Entrar</button>
-</form>
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <div class="mb-3">
+        <label for="id_username" class="form-label">Usuário</label>
+        {{ form.username|add_class:"form-control" }}
+      </div>
+
+      <div class="mb-3">
+        <label for="id_password" class="form-label">Senha</label>
+        {{ form.password|add_class:"form-control" }}
+      </div>
+
+      <div class="d-grid">
+        <button type="submit" class="btn btn-primary">Entrar</button>
+      </div>
+    </form>
+  </div>
 </div>
 {% endblock %}

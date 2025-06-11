@@ -107,3 +107,16 @@ class PartForm(forms.ModelForm):
             'name': 'Nome da Peça',
             'sap_code': 'Código SAP',
         }
+        
+class EquipmentForm(forms.ModelForm):
+    class Meta:
+        model = Equipment
+        fields = ['name', 'line']
+        widget ={
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'line': forms.Select(attrs={'class':'form-select'}),
+        }
+        labels = {
+            'name': 'Nome do Equipamento',
+            'line': 'Linha de Produção',
+        }

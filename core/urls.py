@@ -1,5 +1,7 @@
 from django.urls import path
 from . import views
+from .views import CustomLoginView
+from django.contrib.auth.views import LogoutView
 
 app_name = 'core'
 urlpatterns = [
@@ -13,8 +15,11 @@ urlpatterns = [
     path('peca/nova/', views.create_part_view, name='create_part'),
     path('painel/', views.dashboard_drilldown_view, name='dashboard_drilldown'),
     path('api/sistematicas-do-equipamento/', views.sistematicas_por_equipamento, name='sistematicas_por_equipamento'), #Drill down do equipamento
+    path('peca/ajax/criar/', views.create_part_ajax, name='create_part_ajax'),
+    path('equipamento/ajax/criar/', views.create_equipment_ajax, name='create_equipment_ajax'),
     
-
-
-    
+]
+urlpatterns += [
+    path('login/', CustomLoginView.as_view(), name='login'),
+    path('logout/', LogoutView.as_view(), name='logout'),
 ]

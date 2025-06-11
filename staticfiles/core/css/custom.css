@@ -1,0 +1,67 @@
+/* Em core/static/core/css/custom.css (ou similar) */
+.mini-calendar {
+    position: fixed; /* Fixo na tela */
+    bottom: 20px;    /* Distância da parte inferior */
+    right: 20px;     /* Distância da parte direita */
+    width: 280px;    /* Largura do widget */
+    background-color: #fff;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    z-index: 1000;   /* Para ficar acima de outros elementos */
+    padding: 10px;
+    font-family: sans-serif;
+    font-size: 0.9em;
+}
+
+#mini-calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+
+#mini-calendar-header button {
+    background: none;
+    border: 1px solid #eee;
+    cursor: pointer;
+    padding: 2px 5px;
+    border-radius: 3px;
+}
+#mini-calendar-header button:hover {
+    background-color: #f0f0f0;
+}
+
+#mini-calendar-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr); /* 7 colunas para os dias da semana */
+    gap: 2px;
+    text-align: center;
+}
+
+#mini-calendar-days span {
+    padding: 5px 0;
+    border-radius: 3px;
+}
+
+#mini-calendar-days .day-name { /* Para os nomes dos dias (Dom, Seg, Ter...) */
+    font-weight: bold;
+    font-size: 0.8em;
+    color: #555;
+}
+
+#mini-calendar-days .day-number:hover {
+    background-color: #e0e0e0;
+    cursor: pointer;
+}
+
+#mini-calendar-days .today {
+    background-color: #007bff;
+    color: white;
+    font-weight: bold;
+}
+
+#mini-calendar-days .other-month { /* Dias do mês anterior/seguinte */
+    color: #aaa;
+}

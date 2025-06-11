@@ -3,7 +3,7 @@ from django.shortcuts import get_object_or_404, render, redirect
 from django.http import JsonResponse
 from django.urls import reverse
 from django.utils import timezone # Para datas e horas com fuso horário
-from .models import Systematic, SystematicPartRequired, Equipment, Line
+from .models import Systematic, SystematicPartRequired, Equipment, Line, Part
 from .forms import SystematicForm, ExecutionRecordForm, SystematicPartFormSet, PartForm
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -11,6 +11,8 @@ import datetime
 from django.contrib.auth.decorators import user_passes_test, login_required
 from .utils import group_required
 from .models import Systematic, SystematicPartRequired, ExecutionRecord
+from django.views.decorators.http import require_POST
+from django.contrib.auth.views import LoginView
 
 
 from django.http import HttpResponseForbidden
@@ -24,7 +26,9 @@ def group_required(*group_names):
         return _wrapped_view
     return decorator
 
-
+class CustomLoginView(LoginView):
+    template_name = 'core/login.html'
+    
 def calendario_view(request):
     """
     View que renderiza a página HTML onde o calendário será exibido.
@@ -267,6 +271,7 @@ def dashboard_drilldown_view(request):
     return render(request, 'core/dashboard_drilldown.html', {'linhas': dashboard_data})
 
 def sistematicas_por_equipamento(request):
+    
     equip_id = request.GET.get('equipment_id')
     sistematicas = Systematic.objects.filter(equipment_id=equip_id, is_active=True)
 
@@ -282,3 +287,43 @@ def sistematicas_por_equipamento(request):
         })
 
     return JsonResponse(data, safe=False)
+
+@require_POST
+def create_part_ajax(request):
+    name = request.POST.get('name')
+    sap_code = request.POST.get('sap_code')
+
+    if not name or not sap_code:
+        return JsonResponse({'success': False, 'message': 'Todos os campos são obrigatórios.'})
+
+    part, created = Part.objects.get_or_create(name=name, sap_code=sap_code)
+    
+    return JsonResponse({
+        'success': True,
+        'id': part.id,
+        'name': f"{part.name} ({part.sap_code})"
+    })
+    
+@require_POST
+def create_equipment_ajax(request):
+    name = request.POST.get('name')
+    line_id = request.POST.get('line_id')
+
+
+    if not name or not line_id:
+        return JsonResponse({'success': False, 'message': 'Todos os campos são obrigatórios.'})
+
+    try:
+        line = Line.objects.get(pk=line_id)
+    except Line.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Linha não encontrada.'})
+
+  
+    equipment, created = Equipment.objects.get_or_create(name=name, line=line)
+
+    return JsonResponse({
+        'success': True,
+        'id': equipment.id,
+        'name': f'{equipment.name} ({line.name})'
+    })
+    
