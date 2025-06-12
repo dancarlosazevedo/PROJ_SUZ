@@ -138,7 +138,7 @@ def systematic_detail_view (request, pk): #view para o detalhamento de sistemati
     
     return render(request, 'core/systematic_detail.html', context)
 
-@group_required('Administrador', 'Técnico')
+@login_required
 def systematic_edit_view(request, pk):
     systematic = get_object_or_404(Systematic, pk=pk)
 
@@ -165,7 +165,7 @@ def systematic_edit_view(request, pk):
     })
 
 
-@group_required('Administrador', 'Técnico')
+@login_required
 def register_execution_view(request, pk):
     systematic = get_object_or_404(Systematic, pk=pk)
 
@@ -219,7 +219,7 @@ def systematic_create_view(request): #Nova sistematica
         'formset': formset,
     })
     
-@group_required('Administrador', 'Técnico')
+@login_required
 def create_part_view(request):
     if request.method == 'POST':
         form = PartForm(request.POST)
