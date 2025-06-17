@@ -103,3 +103,5 @@ if os.getenv("RAILWAY_ENVIRONMENT"):
 
 # Configurações padrão
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+print("⚠️ TESTE REDEPLOY CONFIRMAÇÃO")
