@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 from decouple import config
 import dj_database_url
+from django.http import HttpResponseBadRequest
 
 # Caminho base
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -110,3 +111,16 @@ if os.getenv("RAILWAY_ENVIRONMENT"):
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 print("⚠️ TESTE REDEPLOY CONFIRMAÇÃO")
+
+
+class AllowAllHostsMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        # ⚠️ Só aceite se for Railway em produção
+        if "RAILWAY_ENVIRONMENT" in os.environ:
+            request.META["HTTP_HOST"] = "projsuz-production.up.railway.app"
+        return self.get_response(request)
+
+MIDDLEWARE.insert(0, 'sistematica.settings.AllowAllHostsMiddleware')
