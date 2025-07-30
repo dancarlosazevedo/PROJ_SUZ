@@ -1,0 +1,27 @@
+
+services:
+  web:
+    build: .
+    container_name: sistematica_app
+    command: gunicorn sistematica.wsgi:application --bind 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      - db
+
+  db:
+    image: postgres:15
+    container_name: sistematica_db
+    volumes:
+      - pgdata:/var/lib/postgresql/data/
+    environment:
+      POSTGRES_DB: sistematicas
+      POSTGRES_USER: sistemico
+      POSTGRES_PASSWORD: senha123
+
+volumes:
+  pgdata:

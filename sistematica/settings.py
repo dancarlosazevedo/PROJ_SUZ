@@ -1,29 +1,24 @@
-"""
-Django settings for sistematica project adaptado para deploy no Railway.
-"""
-
 import os
 from pathlib import Path
-from decouple import config
+from decouple import config, Csv
 import dj_database_url
-from django.http import HttpResponseBadRequest
 
-# Caminho base
+# Caminho base do projeto
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Segurança
+# --- Configurações de Segurança e Ambiente ---
+# Pega a SECRET_KEY do arquivo .env
 SECRET_KEY = config('SECRET_KEY')
+
+# O modo DEBUG é controlado pelo .env (ex: DEBUG=True ou DEBUG=False)
 DEBUG = config('DEBUG', default=False, cast=bool)
-raw_hosts = config("ALLOWED_HOSTS", default="127.0.0.1")
-ALLOWED_HOSTS = [host.strip() for host in raw_hosts.split(",")] + [
-    "projsuz-production.up.railway.app",
-    "www.projsuz-production.up.railway.app",
-    "localhost"
-]
-print("🔍 ALLOWED_HOSTS =", ALLOWED_HOSTS)
+
+# ALLOWED_HOSTS é lido como uma lista de strings do .env
+# Exemplo no .env: ALLOWED_HOSTS=localhost,127.0.0.1,projsuz-production.up.railway.app
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv())
 
 
-# Aplicativos instalados
+# --- Aplicações Django ---
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -37,9 +32,12 @@ INSTALLED_APPS = [
     'simple_history',
 ]
 
+# --- Middleware ---
+# A ordem é importante
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # Serve arquivos estáticos
+    # Whitenoise deve vir logo após o SecurityMiddleware
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -49,12 +47,18 @@ MIDDLEWARE = [
     'simple_history.middleware.HistoryRequestMiddleware',
 ]
 
+# --- Configuração de URLs e Aplicação ---
 ROOT_URLCONF = 'sistematica.urls'
+WSGI_APPLICATION = 'sistematica.wsgi.application'
 
+# ... (depois da linha WSGI_APPLICATION)
+
+# --- Templates ---
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],  # se aplicável
+        # Adiciona um diretório de templates na raiz do projeto, se você precisar
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -67,60 +71,48 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'sistematica.wsgi.application'
 
-# Banco de Dados com dj-database-url
+# --- Banco de Dados ---
+# Configuração feita via DATABASE_URL do arquivo .env usando dj-database-url
+# Garante que a URL no .env use o nome do serviço do Docker (ex: @sistematica_db:5432)
 DATABASES = {
     'default': dj_database_url.config(
-        default=config('DATABASE_URL'),
-        conn_max_age=600,
+        default=config('DATABASE_URL')
     )
 }
 
-# Validação de senha
+
+# --- Validação de Senhas ---
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
 ]
 
-# Internacionalização
+
+# --- Internacionalização ---
 LANGUAGE_CODE = 'pt-br'
 TIME_ZONE = 'America/Sao_Paulo'
 USE_I18N = True
 USE_TZ = True
 
-# Arquivos estáticos
+
+# --- Arquivos Estáticos (Static Files) ---
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+# Melhora a performance e o cache dos arquivos estáticos em produção
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Arquivos de mídia (opcional)
+
+# --- Arquivos de Mídia (Media Files) ---
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# Segurança extra para ambiente Railway
+
+# --- Configurações Específicas de Ambiente (ex: Railway) ---
 if os.getenv("RAILWAY_ENVIRONMENT"):
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
 
-# Configurações padrão
+# --- Chave Primária Padrão ---
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-print("⚠️ TESTE REDEPLOY CONFIRMAÇÃO")
-
-
-class AllowAllHostsMiddleware:
-    def __init__(self, get_response):
-        self.get_response = get_response
-
-    def __call__(self, request):
-        # ⚠️ Só aceite se for Railway em produção
-        if "RAILWAY_ENVIRONMENT" in os.environ:
-            request.META["HTTP_HOST"] = "projsuz-production.up.railway.app"
-        return self.get_response(request)
-
-MIDDLEWARE.insert(0, 'sistematica.settings.AllowAllHostsMiddleware')
